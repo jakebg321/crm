@@ -2,6 +2,7 @@
 
 import { Box } from '@mui/material';
 import Navigation from './Navigation';
+import ThemeDebuggerModal from './ThemeDebuggerModal';
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   return (
@@ -18,6 +19,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       >
         {children}
       </Box>
+      <ThemeDebuggerModal />
     </Box>
   );
 } 

@@ -23,7 +23,6 @@ import {
   Receipt,
   Person,
   Email,
-  Palette,
   Settings,
 } from '@mui/icons-material';
 import Link from 'next/link';
@@ -41,7 +40,6 @@ const menuItems = [
 ];
 
 const adminMenuItems = [
-  { text: 'Theme Debugger', icon: <Palette />, path: '/theme-debugger' },
   { text: 'Settings', icon: <Settings />, path: '/settings' },
 ];
 
