@@ -1,0 +1,133 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String
+  password      String
+  role          UserRole  @default(STAFF)
+  assignedJobs  Job[]     @relation("AssignedTo")
+  createdJobs   Job[]     @relation("CreatedBy")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Client {
+  id            String    @id @default(cuid())
+  name          String
+  email         String    @unique
+  phone         String
+  address       String
+  city          String
+  state         String
+  zipCode       String
+  notes         String?
+  jobs          Job[]
+  estimates     Estimate[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Job {
+  id            String    @id @default(cuid())
+  title         String
+  description   String
+  status        JobStatus @default(PENDING)
+  type          JobType
+  startDate     DateTime
+  endDate       DateTime?
+  price         Float
+  client        Client    @relation(fields: [clientId], references: [id])
+  clientId      String
+  assignedTo    User      @relation("AssignedTo", fields: [assignedToId], references: [id])
+  assignedToId  String
+  createdBy     User      @relation("CreatedBy", fields: [createdById], references: [id])
+  createdById   String
+  estimate      Estimate? @relation(fields: [estimateId], references: [id])
+  estimateId    String?
+  notes         Note[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Estimate {
+  id            String    @id @default(cuid())
+  title         String
+  description   String
+  status        EstimateStatus @default(DRAFT)
+  price         Float
+  validUntil    DateTime
+  client        Client    @relation(fields: [clientId], references: [id])
+  clientId      String
+  jobs          Job[]
+  lineItems     LineItem[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model LineItem {
+  id            String    @id @default(cuid())
+  description   String
+  quantity      Int
+  unitPrice     Float
+  total         Float
+  estimate      Estimate  @relation(fields: [estimateId], references: [id])
+  estimateId    String
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Note {
+  id            String    @id @default(cuid())
+  content       String
+  job           Job       @relation(fields: [jobId], references: [id])
+  jobId         String
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+enum UserRole {
+  ADMIN
+  MANAGER
+  STAFF
+}
+
+enum JobStatus {
+  PENDING
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum JobType {
+  LAWN_MAINTENANCE
+  LANDSCAPE_DESIGN
+  TREE_SERVICE
+  IRRIGATION
+  HARDSCAPING
+  CLEANUP
+  PLANTING
+  FERTILIZATION
+}
+
+enum EstimateStatus {
+  DRAFT
+  SENT
+  ACCEPTED
+  REJECTED
+  EXPIRED
+}
