@@ -26,6 +26,7 @@ import {
   Settings,
 } from '@mui/icons-material';
 import Link from 'next/link';
+import { alpha, useTheme } from '@mui/material/styles';
 
 const drawerWidth = 240;
 
@@ -45,6 +46,7 @@ const adminMenuItems = [
 
 export default function Navigation() {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const theme = useTheme();
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -52,25 +54,72 @@ export default function Navigation() {
 
   const drawer = (
     <div>
-      <Toolbar>
-        <Typography variant="h6" noWrap component="div">
+      <Toolbar sx={{ 
+        px: 2,
+        py: 1.5,
+      }}>
+        <Typography variant="logo" noWrap component="div" sx={{ color: theme.palette.primary.main }}>
           YardBase CRM
         </Typography>
       </Toolbar>
-      <List>
+      <List sx={{ px: 1 }}>
         {menuItems.map((item) => (
-          <ListItem button key={item.text} component={Link} href={item.path}>
-            <ListItemIcon>{item.icon}</ListItemIcon>
-            <ListItemText primary={item.text} />
+          <ListItem 
+            button 
+            key={item.text} 
+            component={Link} 
+            href={item.path}
+            sx={{
+              borderRadius: 1,
+              my: 0.5,
+              px: 1.5,
+              py: 1,
+              '&:hover': {
+                backgroundColor: alpha(theme.palette.primary.main, 0.08),
+              },
+            }}
+          >
+            <ListItemIcon sx={{ color: theme.palette.primary.main, minWidth: 36 }}>
+              {item.icon}
+            </ListItemIcon>
+            <ListItemText 
+              primary={item.text} 
+              primaryTypographyProps={{ 
+                fontWeight: 500,
+                fontSize: '0.95rem',
+              }}
+            />
           </ListItem>
         ))}
       </List>
-      <Divider />
-      <List>
+      <Divider sx={{ mx: 2, my: 1, borderColor: alpha(theme.palette.primary.main, 0.08) }} />
+      <List sx={{ px: 1 }}>
         {adminMenuItems.map((item) => (
-          <ListItem button key={item.text} component={Link} href={item.path}>
-            <ListItemIcon>{item.icon}</ListItemIcon>
-            <ListItemText primary={item.text} />
+          <ListItem 
+            button 
+            key={item.text} 
+            component={Link} 
+            href={item.path}
+            sx={{
+              borderRadius: 1,
+              my: 0.5,
+              px: 1.5,
+              py: 1,
+              '&:hover': {
+                backgroundColor: alpha(theme.palette.primary.main, 0.08),
+              },
+            }}
+          >
+            <ListItemIcon sx={{ color: theme.palette.primary.main, minWidth: 36 }}>
+              {item.icon}
+            </ListItemIcon>
+            <ListItemText 
+              primary={item.text} 
+              primaryTypographyProps={{ 
+                fontWeight: 500,
+                fontSize: '0.95rem',
+              }}
+            />
           </ListItem>
         ))}
       </List>
@@ -84,6 +133,8 @@ export default function Navigation() {
         sx={{
           width: { sm: `calc(100% - ${drawerWidth}px)` },
           ml: { sm: `${drawerWidth}px` },
+          boxShadow: 'none',
+          borderBottom: `1px solid ${alpha(theme.palette.primary.main, 0.08)}`,
         }}
       >
         <Toolbar>
@@ -96,7 +147,7 @@ export default function Navigation() {
           >
             <MenuIcon />
           </IconButton>
-          <Typography variant="h6" noWrap component="div">
+          <Typography variant="h6" noWrap component="div" sx={{ fontWeight: 600 }}>
             YardBase CRM
           </Typography>
         </Toolbar>
@@ -114,7 +165,12 @@ export default function Navigation() {
           }}
           sx={{
             display: { xs: 'block', sm: 'none' },
-            '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth },
+            '& .MuiDrawer-paper': { 
+              boxSizing: 'border-box', 
+              width: drawerWidth,
+              borderRight: `1px solid ${alpha(theme.palette.primary.main, 0.08)}`,
+              boxShadow: `4px 0px 16px ${alpha(theme.palette.primary.main, 0.06)}`,
+            },
           }}
         >
           {drawer}
@@ -123,7 +179,12 @@ export default function Navigation() {
           variant="permanent"
           sx={{
             display: { xs: 'none', sm: 'block' },
-            '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth },
+            '& .MuiDrawer-paper': { 
+              boxSizing: 'border-box', 
+              width: drawerWidth,
+              borderRight: `1px solid ${alpha(theme.palette.primary.main, 0.08)}`,
+              boxShadow: 'none',
+            },
           }}
           open
         >

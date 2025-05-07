@@ -1,0 +1,68 @@
+# YardBase CRM Development Roadmap
+
+## Phase 1: Project Setup
+- [ ] Initialize Next.js project with TypeScript
+- [ ] Set up Material-UI and theme
+- [ ] Configure Prisma for database
+- [ ] Set up authentication system
+
+## Phase 2: Core Features
+### Authentication
+- [ ] Login page
+- [ ] Registration page
+- [ ] Password reset flow
+- [ ] Protected routes
+
+### Dashboard
+- [ ] Main dashboard layout
+- [ ] Overview cards (Total Jobs, Active Jobs, etc.)
+- [ ] Recent activity feed
+- [ ] Quick action buttons
+
+### Job Management
+- [ ] Job creation form
+- [ ] Job listing table
+- [ ] Job details view
+- [ ] Job status management
+- [ ] Job assignment to employees
+
+### Client Management
+- [ ] Client creation form
+- [ ] Client listing
+- [ ] Client details view
+- [ ] Client history tracking
+
+### Scheduling
+- [ ] Calendar view
+- [ ] Job scheduling interface
+- [ ] Schedule conflicts detection
+
+## Phase 3: Advanced Features
+### Estimates & Invoicing
+- [ ] Estimate creation
+- [ ] Estimate templates
+- [ ] Client approval workflow
+- [ ] Invoice generation
+
+### Employee Management
+- [ ] Employee profiles
+- [ ] Time tracking
+- [ ] Work hours reporting
+
+### Communication
+- [ ] Email notifications
+- [ ] SMS notifications
+- [ ] Client portal
+
+## Current Focus
+1. Set up Next.js project with Material-UI
+2. Configure Prisma and database
+3. Implement authentication
+4. Create basic dashboard layout
+
+## Next Steps
+1. Delete existing project structure
+2. Create new Next.js project
+3. Set up Material-UI theme
+4. Configure Prisma
+5. Create authentication system

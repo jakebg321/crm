@@ -1,0 +1,34 @@
+# PostgreSQL Database Configuration for Landscape CRM
+
+## Database Connection Details
+DATABASE_NAME=landscape_crm
+DATABASE_HOST=localhost
+DATABASE_PORT=5432
+DATABASE_USER=jake
+DATABASE_PASSWORD=password
+
+## Connection String Format
+# For Prisma (in .env file):
+DATABASE_URL="postgresql://jake:password@localhost:5432/landscape_crm"
+
+## Commands Used for Setup
+
+# Create Database
+psql -U postgres -c "CREATE DATABASE landscape_crm;"
+
+# Create User and Grant Privileges
+psql -U postgres -d landscape_crm -c "CREATE USER jake WITH ENCRYPTED PASSWORD 'password'; GRANT ALL PRIVILEGES ON DATABASE landscape_crm TO jake;"
+
+## Next Steps
+
+# 1. Create .env file for Prisma
+echo DATABASE_URL="postgresql://jake:password@localhost:5432/landscape_crm" > .env
+
+# 2. Run Prisma migrations to set up schema
+npx prisma migrate dev --name init
+
+# 3. Seed database with test data (optional)
+npx prisma db seed
+
+# 4. View database with Prisma Studio
+npx prisma studio

@@ -1,48 +1,60 @@
 import { createTheme, alpha } from '@mui/material/styles';
 
+// Helper function to get CSS variable with fallback
+const cssVar = (name: string, fallback: string) => {
+  if (typeof window !== 'undefined') {
+    const cssVariable = getComputedStyle(document.documentElement)
+      .getPropertyValue(`--mui-palette-${name}`)
+      .trim();
+    
+    return cssVariable || fallback;
+  }
+  return fallback;
+};
+
 const theme = createTheme({
   palette: {
     primary: {
-      main: '#253944',
-      light: '#293f4c',
-      dark: '#243843',
-      contrastText: '#f6f5f0',
+      main: cssVar('primary-main', '#253944'),
+      light: cssVar('primary-light', '#293f4c'),
+      dark: cssVar('primary-dark', '#243843'),
+      contrastText: cssVar('primary-contrastText', '#f6f5f0'),
     },
     secondary: {
-      main: '#f6f5f0',
-      light: '#f2f1ed',
-      dark: '#f8f7f2',
-      contrastText: '#253944',
+      main: cssVar('secondary-main', '#f6f5f0'),
+      light: cssVar('secondary-light', '#f2f1ed'),
+      dark: cssVar('secondary-dark', '#f8f7f2'),
+      contrastText: cssVar('secondary-contrastText', '#253944'),
     },
     success: {
-      main: '#389757',
-      light: '#389758',
-      dark: '#7f6f1',
+      main: cssVar('success-main', '#389758'),
+      light: cssVar('success-light', '#4ca76a'),
+      dark: cssVar('success-dark', '#2d7f46'),
     },
     warning: {
-      main: '#f8f7f2',
-      light: '#f6f5f0',
-      dark: '#f2f1ed',
+      main: cssVar('warning-main', '#f8f772'),
+      light: cssVar('warning-light', '#faf88a'),
+      dark: cssVar('warning-dark', '#e5e45a'),
     },
     error: {
-      main: '#f8f7f2',
-      light: '#f6f5f0',
-      dark: '#f2f1ed',
+      main: cssVar('error-main', '#f44336'),
+      light: cssVar('error-light', '#f6685e'),
+      dark: cssVar('error-dark', '#d32f2f'),
     },
     info: {
-      main: '#293f4c',
-      light: '#253944',
-      dark: '#243843',
+      main: cssVar('info-main', '#293f4c'),
+      light: cssVar('info-light', '#253944'),
+      dark: cssVar('info-dark', '#243843'),
     },
     text: {
-      primary: '#000000',
-      secondary: '#253944',
+      primary: cssVar('text-primary', '#000000'),
+      secondary: cssVar('text-secondary', '#253944'),
     },
     background: {
-      default: '#f6f5f0',
-      paper: '#f2f1ed',
+      default: cssVar('background-default', '#f6f5f0'),
+      paper: cssVar('background-paper', '#f2f1ed'),
     },
-    divider: '#f8f7f2',
+    divider: cssVar('divider', '#f8f7f2'),
   },
   typography: {
     fontFamily: '"Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
@@ -107,7 +119,7 @@ const theme = createTheme({
     },
   },
   shape: {
-    borderRadius: 20,
+    borderRadius: 3,
   },
   shadows: [
     'none',
@@ -122,48 +134,49 @@ const theme = createTheme({
       styleOverrides: {
         root: {
           backgroundImage: 'none',
-          boxShadow: '0px 2px 8px rgba(37, 57, 68, 0.06)',
-          borderRadius: 20,
+          boxShadow: 'none',
+          borderRadius: 3,
           border: 'none',
           transition: 'all 0.2s ease-in-out',
           '&:hover': {
-            transform: 'translateY(-2px)',
-            boxShadow: '0px 4px 16px rgba(37, 57, 68, 0.12)',
+            transform: 'translateY(-4px)',
+            boxShadow: `0px 8px 20px ${alpha(cssVar('primary-main', '#253944'), 0.12)}`,
           },
         },
         elevation1: {
-          boxShadow: '0px 2px 8px rgba(37, 57, 68, 0.06)',
+          boxShadow: 'none',
         },
       },
     },
     MuiButton: {
       styleOverrides: {
         root: {
-          borderRadius: 16,
-          padding: '12px 24px',
-          fontSize: '0.95rem',
+          borderRadius: 2,
+          padding: '8px 16px',
+          fontSize: '0.875rem',
           fontWeight: 600,
           letterSpacing: '0.02em',
           transition: 'all 0.2s ease-in-out',
           '&:hover': {
-            transform: 'translateY(-1px)',
+            transform: 'translateY(-2px)',
+            boxShadow: `0px 4px 12px ${alpha(cssVar('primary-main', '#253944'), 0.15)}`,
           },
         },
         contained: {
           boxShadow: 'none',
-          background: '#253944',
-          color: '#f6f5f0',
+          background: cssVar('primary-main', '#253944'),
+          color: cssVar('primary-contrastText', '#f6f5f0'),
           '&:hover': {
-            boxShadow: '0px 4px 16px rgba(37, 57, 68, 0.2)',
-            background: '#243843',
+            boxShadow: `0px 6px 16px ${alpha(cssVar('primary-main', '#253944'), 0.2)}`,
+            background: cssVar('primary-dark', '#243843'),
           },
         },
         outlined: {
-          borderColor: '#253944',
-          color: '#253944',
+          borderColor: cssVar('primary-main', '#253944'),
+          color: cssVar('primary-main', '#253944'),
           '&:hover': {
-            borderColor: '#243843',
-            background: 'rgba(37, 57, 68, 0.04)',
+            borderColor: cssVar('primary-dark', '#243843'),
+            background: `rgba(${parseInt(cssVar('primary-main', '#253944').slice(1, 3), 16)}, ${parseInt(cssVar('primary-main', '#253944').slice(3, 5), 16)}, ${parseInt(cssVar('primary-main', '#253944').slice(5, 7), 16)}, 0.04)`,
           },
         },
       },
@@ -171,13 +184,13 @@ const theme = createTheme({
     MuiCard: {
       styleOverrides: {
         root: {
-          borderRadius: 20,
-          boxShadow: '0px 2px 8px rgba(37, 57, 68, 0.06)',
+          borderRadius: 3,
+          boxShadow: 'none',
           border: 'none',
           transition: 'all 0.2s ease-in-out',
           '&:hover': {
-            transform: 'translateY(-2px)',
-            boxShadow: '0px 4px 16px rgba(37, 57, 68, 0.12)',
+            transform: 'translateY(-4px)',
+            boxShadow: `0px 8px 20px ${alpha(cssVar('primary-main', '#253944'), 0.12)}`,
           },
         },
       },
@@ -185,17 +198,17 @@ const theme = createTheme({
     MuiListItem: {
       styleOverrides: {
         root: {
-          borderRadius: 16,
+          borderRadius: 2,
           margin: '4px 8px',
           transition: 'all 0.2s ease-in-out',
           '&.Mui-selected': {
-            backgroundColor: alpha('#253944', 0.12),
+            backgroundColor: alpha(cssVar('primary-main', '#253944'), 0.12),
             '&:hover': {
-              backgroundColor: alpha('#253944', 0.18),
+              backgroundColor: alpha(cssVar('primary-main', '#253944'), 0.18),
             },
           },
           '&:hover': {
-            backgroundColor: alpha('#253944', 0.06),
+            backgroundColor: alpha(cssVar('primary-main', '#253944'), 0.06),
           },
         },
       },
@@ -204,7 +217,7 @@ const theme = createTheme({
       styleOverrides: {
         root: {
           minWidth: 40,
-          color: '#253944',
+          color: cssVar('primary-main', '#253944'),
         },
       },
     },
@@ -212,26 +225,26 @@ const theme = createTheme({
       styleOverrides: {
         paper: {
           borderRight: 'none',
-          boxShadow: '4px 0px 16px rgba(37, 57, 68, 0.06)',
-          backgroundColor: '#f6f5f0',
+          boxShadow: `4px 0px 16px ${alpha(cssVar('primary-main', '#253944'), 0.06)}`,
+          backgroundColor: cssVar('secondary-main', '#f6f5f0'),
         },
       },
     },
     MuiAppBar: {
       styleOverrides: {
         root: {
-          backgroundColor: '#f2f1ed',
-          color: '#000000',
-          boxShadow: '0px 2px 8px rgba(37, 57, 68, 0.04)',
+          backgroundColor: cssVar('secondary-light', '#f2f1ed'),
+          color: cssVar('text-primary', '#000000'),
+          boxShadow: `0px 2px 8px ${alpha(cssVar('primary-main', '#253944'), 0.04)}`,
         },
       },
     },
     MuiTableHead: {
       styleOverrides: {
         root: {
-          backgroundColor: '#f6f5f0',
+          backgroundColor: cssVar('secondary-main', '#f6f5f0'),
           '& .MuiTableCell-root': {
-            color: '#253944',
+            color: cssVar('primary-main', '#253944'),
             fontWeight: 600,
             letterSpacing: '0.02em',
           },
@@ -241,7 +254,7 @@ const theme = createTheme({
     MuiTableCell: {
       styleOverrides: {
         root: {
-          borderBottom: '1px solid #f8f7f2',
+          borderBottom: `1px solid ${cssVar('secondary-dark', '#f8f7f2')}`,
           padding: '16px',
         },
       },
@@ -249,7 +262,7 @@ const theme = createTheme({
     MuiChip: {
       styleOverrides: {
         root: {
-          borderRadius: 16,
+          borderRadius: 4,
           height: '32px',
           padding: '0 12px',
           fontSize: '0.85rem',
@@ -270,7 +283,7 @@ const theme = createTheme({
       styleOverrides: {
         root: {
           '& .MuiOutlinedInput-root': {
-            borderRadius: 16,
+            borderRadius: 2,
             '& fieldset': {
               borderColor: '#f8f7f2',
             },
@@ -287,14 +300,14 @@ const theme = createTheme({
     MuiInputBase: {
       styleOverrides: {
         root: {
-          borderRadius: 16,
+          borderRadius: 2,
         },
       },
     },
     MuiSelect: {
       styleOverrides: {
         select: {
-          borderRadius: 16,
+          borderRadius: 2,
         },
       },
     },
@@ -311,7 +324,7 @@ const theme = createTheme({
     MuiTabs: {
       styleOverrides: {
         indicator: {
-          backgroundColor: '#389757',
+          backgroundColor: '#389758',
         },
       },
     },

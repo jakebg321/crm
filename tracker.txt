@@ -1,0 +1,68 @@
+# YardBase CRM – Project Tracker & Developer Guide
+
+## Project Overview
+YardBase CRM is a modern, full-featured customer relationship management system tailored for landscape businesses. It provides dashboard analytics, job and client management, scheduling, estimates/invoicing, and employee management. The UI is built with Material-UI and a custom theme system for real-time, brand-aligned customization.
+
+---
+
+## Current Status (Audit: UI Consistency & Codebase)
+
+### ✅ Core Setup Complete
+- Next.js (TypeScript) project structure
+- Material-UI with custom theme (palette: #000000, #253944, #293f4c, #389757, #f6f5f0, #f7f6f1, #f2f1ed, #f8f7f2)
+- PostgreSQL database (see dbConfg.txt)
+- Prisma ORM (see prisma/schema.prisma)
+- NextAuth.js authentication (role-based, JWT)
+- Protected routes and hooks
+
+### ✅ Main Features Implemented
+- Dashboard: Modern, animated, and fully themed (reference for all UI)
+- Jobs: Listing, status, and management (uses theme, needs more dashboard-level polish)
+- Clients: Listing, quick actions, and details (uses theme, needs more dashboard-level polish)
+- Schedule: Basic page scaffolded (needs calendar and job integration)
+
+### ⏳ In Progress / Needs Attention
+- **UI/UX Consistency:**
+  - Audit and refactor all pages/components to match dashboard's visual polish
+  - Use theme palette, spacing, and typography everywhere
+  - Add subtle animations, gradients, and hover effects to cards, tables, and buttons
+- **Feature Expansion:**
+  - Scheduling/calendar system
+  - Estimates and invoicing workflows
+  - Employee management
+  - Communication (email/SMS, client portal)
+
+---
+
+## Immediate Next Steps
+1. **UI Consistency Drive**
+   - [ ] Refactor jobs, clients, and schedule pages for dashboard-level visual polish
+   - [ ] Replace hardcoded colors/styles with theme values
+   - [ ] Standardize spacing, border radius, and typography
+   - [ ] Add animations/hover effects to interactive elements
+2. **Component Library**
+   - [ ] Extract and reuse shared UI components (cards, tables, buttons, etc.)
+   - [ ] Document usage patterns for future features
+3. **Feature Development**
+   - [ ] Build out scheduling/calendar (with theme integration)
+   - [ ] Implement estimates/invoicing (UI and backend)
+   - [ ] Expand employee management and communication features
+
+---
+
+## Technical Reference
+- **Theme:** `/src/app/styles/theme.ts` (edit here for palette/typography)
+- **Layout:** `/components/Layout.tsx` (shared app shell)
+- **Database:** `/prisma/schema.prisma` (models)
+- **Auth:** NextAuth.js config in `/src` (see README)
+- **Seed Data:** `/prisma/seed.ts`
+
+---
+
+## Developer Notes
+- Always use the theme for colors, spacing, and typography
+- Reference the dashboard for UI/UX best practices
+- Keep components modular and reusable
+- Update this tracker as features progress
+
+_Last Updated: [Update this date on each major change]_

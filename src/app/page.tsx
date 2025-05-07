@@ -60,9 +60,27 @@ export default function Dashboard() {
 
       <Grid container spacing={3} sx={{ mb: 4 }}>
         {[
-          { title: 'Open Jobs', value: '40', color: theme.palette.primary.main, background: theme.palette.secondary.main },
-          { title: 'Pending Estimates', value: '16', color: theme.palette.success.main, background: theme.palette.secondary.main },
-          { title: 'Scheduled', value: '25', color: theme.palette.secondary.main, background: theme.palette.primary.main }
+          { 
+            title: 'Open Jobs', 
+            value: '40', 
+            color: theme.palette.text.primary, 
+            background: theme.palette.secondary.main,
+            border: 'none'
+          },
+          { 
+            title: 'Pending Estimates', 
+            value: '16', 
+            color: theme.palette.success.main, 
+            background: theme.palette.secondary.main,
+            border: 'none'
+          },
+          { 
+            title: 'Scheduled', 
+            value: '25', 
+            color: theme.palette.secondary.main, 
+            background: theme.palette.primary.main,
+            border: 'none'
+          }
         ].map((item, index) => (
           <Grid item xs={12} sm={4} md={4} key={item.title}>
             <MotionPaper
@@ -76,21 +94,14 @@ export default function Dashboard() {
                 alignItems: 'flex-start',
                 background: item.background,
                 minHeight: 140,
+                borderRadius: 3,
                 position: 'relative',
                 overflow: 'hidden',
-                '&::after': {
-                  content: '""',
-                  position: 'absolute',
-                  top: 0,
-                  right: 0,
-                  width: '30%',
-                  height: '100%',
-                  background: `linear-gradient(90deg, ${alpha(item.color, 0)} 0%, ${alpha(item.color, 0.1)} 100%)`,
-                  transform: 'translateX(50%)',
-                },
+                border: item.border,
+                boxShadow: 'none',
                 '&:hover': {
                   transform: 'translateY(-4px)',
-                  boxShadow: `0px 8px 24px ${alpha(theme.palette.primary.main, 0.15)}`,
+                  boxShadow: `0px 8px 20px ${alpha(theme.palette.primary.main, 0.12)}`,
                 }
               }}
             >
@@ -111,7 +122,8 @@ export default function Dashboard() {
                 sx={{ 
                   color: item.background === theme.palette.primary.main ? theme.palette.secondary.main : theme.palette.text.secondary,
                   position: 'relative',
-                  zIndex: 1
+                  zIndex: 1,
+                  fontWeight: 500
                 }}
               >
                 {item.title}
@@ -129,10 +141,12 @@ export default function Dashboard() {
             transition={{ duration: 0.5, delay: 0.4 }}
             sx={{ 
               p: 3,
+              borderRadius: 3,
               position: 'relative',
+              boxShadow: 'none',
               '&:hover': {
                 transform: 'translateY(-4px)',
-                boxShadow: `0px 8px 24px ${alpha(theme.palette.primary.main, 0.15)}`,
+                boxShadow: `0px 8px 20px ${alpha(theme.palette.primary.main, 0.12)}`,
               }
             }}
           >
@@ -151,7 +165,7 @@ export default function Dashboard() {
               <BarChart
                 series={[{
                   data: earnings.map(item => item.value / 1000),
-                  color: theme.palette.success.light,
+                  color: theme.palette.success.main,
                   label: 'Revenue',
                 }]}
                 xAxis={[{
@@ -171,13 +185,20 @@ export default function Dashboard() {
                   },
                   valueFormatter: (value) => `${value}k`,
                 }]}
+                axisHighlight={{
+                  x: 'none',
+                  y: 'none',
+                }}
+                tooltip={{
+                  trigger: 'item',
+                }}
                 grid={{ horizontal: false, vertical: false }}
                 sx={{
                   '.MuiBarElement-root': {
-                    fill: theme.palette.success.light,
-                    rx: 6,
+                    fill: theme.palette.success.main,
+                    rx: 4,
                     '&:hover': {
-                      fill: theme.palette.success.main,
+                      fill: theme.palette.success.dark,
                     },
                   },
                   '.MuiChartsAxis-tickLabel': {
