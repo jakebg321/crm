@@ -1,7 +1,10 @@
 import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
+import { prisma } from "@/lib/prisma";
+import bcrypt from "bcryptjs";
+import { AuthOptions } from "next-auth";
 
-export const authOptions = {
+export const authOptions: AuthOptions = {
   providers: [
     CredentialsProvider({
       name: 'Credentials',
@@ -10,14 +13,30 @@ export const authOptions = {
         password: { label: "Password", type: "password" }
       },
       async authorize(credentials) {
-        // TODO: Replace with your real user lookup
-        if (
-          credentials?.email === 'admin@demo.com' &&
-          credentials?.password === 'password'
-        ) {
-          return { id: '1', name: 'Demo Admin', email: 'admin@demo.com', role: 'admin' };
+        if (!credentials?.email || !credentials?.password) return null;
+        
+        try {
+          // Find user in the database
+          const user = await prisma.user.findUnique({
+            where: { email: credentials.email },
+          });
+          if (!user) return null;
+          
+          // Compare password
+          const isValid = await bcrypt.compare(credentials.password, user.password);
+          if (!isValid) return null;
+          
+          // Return user object (omit password)
+          return {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            role: user.role,
+          };
+        } catch (error) {
+          console.error("NextAuth authorize error:", error);
+          return null;
         }
-        return null;
       }
     })
   ],
@@ -30,14 +49,17 @@ export const authOptions = {
   callbacks: {
     async session({ session, token }) {
       if (token) {
-        session.user.id = token.sub;
-        session.user.role = token.role;
+        session.user = {
+          ...session.user,
+          id: token.sub || "",
+          role: token.role as string || "",
+        };
       }
       return session;
     },
     async jwt({ token, user }) {
       if (user) {
-        token.role = user.role;
+        token.role = (user as any).role;
       }
       return token;
     }

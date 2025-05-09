@@ -66,3 +66,65 @@
 3. Set up Material-UI theme
 4. Configure Prisma
 5. Create authentication system
+
+# Manual Test Script: YardBase CRM
+
+## 1. Registration
+- Go to the registration page (/register).
+- Fill in name, email, and password fields.
+- Submit the form.
+- **Expected:** You are redirected to the login page. No errors. Registration form autosaves if you refresh before submitting.
+
+## 2. Login
+- Go to the login page (/login).
+- Enter the credentials you just registered.
+- Submit the form.
+- **Expected:** You are redirected to the dashboard. Your name and role are shown in the header.
+
+## 3. Dashboard
+- View the dashboard after login.
+- **Expected:**
+  - If you are a new user, you see an empty state or "Get started" prompt.
+  - Stats (Open Jobs, Pending Estimates, Scheduled) are all zero.
+
+## 4. Add a Client
+- Go to the Clients page (/clients).
+- Click "Add Client" (or similar button).
+- Fill in all required fields and submit.
+- **Expected:** The new client appears in your client list. No errors.
+
+## 5. Add a Job
+- Go to the Jobs page (/jobs) or Schedule page (/schedule).
+- Click "New Job".
+- Fill in all required fields (title, type, start date, price, client ID, assigned to ID, etc.).
+- Submit the form.
+- **Expected:** The new job appears in your jobs list. Dashboard stats update. No estimate is required.
+
+## 6. Dashboard Stats Update
+- Return to the dashboard.
+- **Expected:** "Open Jobs" stat increases by 1. Revenue chart updates if price is set.
+
+## 7. User-Specific Data
+- Log out.
+- Register a new user with a different email.
+- Log in as the new user.
+- **Expected:**
+  - Dashboard and jobs/clients pages are empty for the new user.
+  - The new user cannot see jobs or clients created by the first user.
+
+## 8. (Optional) Add an Estimate (API Only)
+- Use a tool like Postman or Insomnia to POST to /api/estimates with required fields (clientId, total, status).
+- **Expected:** The estimate is created and appears in the dashboard stats.
+
+## 9. Error Handling
+- Try to submit a job or client form with missing required fields.
+- **Expected:** You see a clear error message and the form is not submitted.
+
+## 10. Protected Routes
+- Log out and try to access /jobs, /clients, or /dashboard directly.
+- **Expected:** You are redirected to the login page.
+
+---
+
+# If any step fails, note the error and expected vs. actual result.
+# This script can be used for manual QA or as a basis for automated tests.

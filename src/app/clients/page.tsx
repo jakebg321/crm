@@ -1,3 +1,4 @@
+// Clients Page - Manages client information and client-related operations
 'use client';
 
 import { useState, useEffect } from 'react';

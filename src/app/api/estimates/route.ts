@@ -4,10 +4,10 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 
-// GET /api/schedule - Get all jobs for the schedule
+// GET /api/estimates - Get all estimates for the logged-in user
 export async function GET(request: Request) {
   try {
-    console.log('Fetching schedule - checking authentication');
+    console.log('Fetching estimates - checking authentication');
     
     // Check database connection first before anything else
     try {
@@ -39,19 +39,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Unauthorized - No user ID' }, { status: 401 });
     }
 
-    const { searchParams } = new URL(request.url);
-    const startDate = searchParams.get('startDate');
-    const endDate = searchParams.get('endDate');
-
-    if (!startDate || !endDate) {
-      console.log('Missing date parameters');
-      return NextResponse.json(
-        { error: 'Start date and end date are required' },
-        { status: 400 }
-      );
-    }
-
-    console.log(`Fetching jobs from ${startDate} to ${endDate} for user ${session.user.id}`);
+    console.log(`Fetching estimates for user ${session.user.id}`);
     
     // Verify the user exists in the database
     try {
@@ -72,41 +60,24 @@ export async function GET(request: Request) {
       }, { status: 500 });
     }
     
-    // Now try to fetch the jobs
+    // Now try to fetch the estimates
     try {
-      // First check if the job table exists by trying a count
-      const jobCount = await prisma.job.count({
-        where: { 
-          createdById: session.user.id,
-          startDate: {
-            gte: new Date(startDate),
-            lte: new Date(endDate),
-          }
-        }
+      // First check if the estimate table exists by trying a count
+      const estimateCount = await prisma.estimate.count({
+        where: { createdById: session.user.id }
       });
       
-      console.log(`Found ${jobCount} jobs in count query`);
+      console.log(`Found ${estimateCount} estimates for user`);
       
       // If we get here, the table exists, so we can try the full query
-      const jobs = await prisma.job.findMany({
-        where: {
-          createdById: session.user.id,
-          startDate: {
-            gte: new Date(startDate),
-            lte: new Date(endDate),
-          },
-        },
-        include: {
-          client: true,
-          assignedTo: true,
-        },
-        orderBy: {
-          startDate: 'asc',
-        },
+      const estimates = await prisma.estimate.findMany({
+        where: { createdById: session.user.id },
+        include: { client: true, lineItems: true },
+        orderBy: { createdAt: 'desc' },
       });
       
-      console.log(`Successfully fetched ${jobs.length} jobs`);
-      return NextResponse.json(jobs);
+      console.log(`Successfully fetched ${estimates.length} estimates`);
+      return NextResponse.json(estimates);
     } catch (prismaError) {
       console.error('Prisma query error:', prismaError);
       
@@ -118,13 +89,8 @@ export async function GET(request: Request) {
         if (prismaError.code === 'P2021') {
           return NextResponse.json({ 
             error: 'Database table not found', 
-            details: 'The job table does not exist in the database. Run database migrations.' 
+            details: 'The estimates table does not exist in the database. Run database migrations.' 
           }, { status: 500 });
-        } else if (prismaError.code === 'P2003') {
-          return NextResponse.json({ 
-            error: 'Foreign key constraint failed', 
-            details: 'A related record was not found. Check client and assignedTo IDs.' 
-          }, { status: 400 });
         }
       }
       
@@ -134,18 +100,18 @@ export async function GET(request: Request) {
       }, { status: 500 });
     }
   } catch (error) {
-    console.error('Unexpected error in schedule API:', error);
+    console.error('Unexpected error in estimates API:', error);
     return NextResponse.json({ 
-      error: 'Internal Server Error',
+      error: 'Internal Server Error', 
       details: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 });
   }
 }
 
-// POST /api/schedule - Create a new job
+// POST /api/estimates - Create a new estimate
 export async function POST(request: Request) {
   try {
-    console.log('Creating new job - checking authentication');
+    console.log('Creating new estimate - checking authentication');
     
     // Check database connection first before anything else
     try {
@@ -176,7 +142,7 @@ export async function POST(request: Request) {
       console.log('Unauthorized: No user ID in session');
       return NextResponse.json({ error: 'Unauthorized - No user ID' }, { status: 401 });
     }
-    
+
     // Verify the user exists in the database
     try {
       const userExists = await prisma.user.findUnique({
@@ -203,31 +169,17 @@ export async function POST(request: Request) {
       console.error('Error parsing request body:', parseError);
       return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
     }
-
-    const {
-      title,
-      description,
-      type,
-      startDate,
-      endDate,
-      price,
-      clientId,
-      assignedToId,
-    } = body;
-
-    console.log('Received job data:', { title, type, startDate, clientId, assignedToId });
-
-    // Validate required fields
-    if (!title || !type || !startDate || !price || !clientId || !assignedToId) {
+    
+    const { clientId, total, status, lineItems } = body;
+    console.log('Received estimate data:', { clientId, total, status, lineItemCount: lineItems?.length || 0 });
+    
+    if (!clientId || !total || !status) {
       console.log('Missing required fields');
-      return NextResponse.json(
-        { error: 'Missing required fields' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
     
-    // Verify client and assignedTo exist
     try {
+      // Verify the client exists
       const clientExists = await prisma.client.findUnique({
         where: { id: clientId },
         select: { id: true }
@@ -238,43 +190,24 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'Client not found' }, { status: 404 });
       }
       
-      const assignedToExists = await prisma.user.findUnique({
-        where: { id: assignedToId },
-        select: { id: true }
-      });
-      
-      if (!assignedToExists) {
-        console.log(`AssignedTo user ID ${assignedToId} not found in database`);
-        return NextResponse.json({ error: 'Assigned user not found' }, { status: 404 });
-      }
-    } catch (entityError) {
-      console.error('Error verifying client/assignedTo existence:', entityError);
-      return NextResponse.json({ 
-        error: 'Error verifying client or assignedTo user', 
-        details: entityError instanceof Error ? entityError.message : 'Unknown entity error'
-      }, { status: 500 });
-    }
-
-    try {
-      const job = await prisma.job.create({
+      const estimate = await prisma.estimate.create({
         data: {
-          title,
-          description,
-          type,
-          startDate: new Date(startDate),
-          endDate: endDate ? new Date(endDate) : null,
-          price,
           clientId,
-          assignedToId,
+          total,
+          status,
           createdById: session.user.id,
+          lineItems: lineItems && Array.isArray(lineItems) ? {
+            create: lineItems.map(item => ({
+              description: item.description,
+              quantity: item.quantity,
+              price: item.price,
+            }))
+          } : undefined,
         },
-        include: {
-          client: true,
-          assignedTo: true,
-        },
+        include: { client: true, lineItems: true },
       });
-      console.log('Job created successfully:', job.id);
-      return NextResponse.json(job);
+      console.log('Estimate created successfully:', estimate.id);
+      return NextResponse.json(estimate);
     } catch (prismaError: any) {
       console.error('Prisma create error:', prismaError);
       if (prismaError.code) {
@@ -288,7 +221,7 @@ export async function POST(request: Request) {
         } else if (prismaError.code === 'P2021') {
           return NextResponse.json({ 
             error: 'Database table not found', 
-            details: 'The job table does not exist in the database. Run database migrations.' 
+            details: 'The estimates table does not exist in the database. Run database migrations.' 
           }, { status: 500 });
         }
       }
@@ -299,7 +232,7 @@ export async function POST(request: Request) {
       }, { status: 500 });
     }
   } catch (error) {
-    console.error('Error creating job:', error);
+    console.error('Error creating estimate:', error);
     return NextResponse.json({ 
       error: 'Internal Server Error',
       details: error instanceof Error ? error.message : 'Unknown error' 

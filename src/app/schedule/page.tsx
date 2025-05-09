@@ -1,3 +1,4 @@
+// Schedule Page - Manages and displays job scheduling and calendar functionality
 'use client';
 
 import { useState, useEffect } from 'react';
