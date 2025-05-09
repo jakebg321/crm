@@ -34,19 +34,29 @@ YardBase CRM is a modern, full-featured customer relationship management system 
 
 ---
 
+## Recent Changes (Auth & Protection)
+- Added full authentication flow using NextAuth.js with CredentialsProvider.
+- All main app pages (Clients, Jobs, Schedule) are now protected:
+  - Users are redirected to /login if not authenticated (client and server-side checks).
+- Created a `/login` page that reuses the sign-in UI for consistent authentication experience.
+- Database is seeded with demo users and data for immediate testing.
+- SessionProvider is now included in the app provider tree for proper session management.
+
+---
+
 ## Immediate Next Steps
-1. **UI Consistency Drive**
-   - [ ] Refactor jobs, clients, and schedule pages for dashboard-level visual polish
-   - [ ] Replace hardcoded colors/styles with theme values
-   - [ ] Standardize spacing, border radius, and typography
-   - [ ] Add animations/hover effects to interactive elements
-2. **Component Library**
-   - [ ] Extract and reuse shared UI components (cards, tables, buttons, etc.)
-   - [ ] Document usage patterns for future features
-3. **Feature Development**
-   - [ ] Build out scheduling/calendar (with theme integration)
-   - [ ] Implement estimates/invoicing (UI and backend)
-   - [ ] Expand employee management and communication features
+1. **Create Account/Registration Form**
+   - [ ] Build a user registration page ("Create Account")
+   - [ ] Add backend logic to create new users securely (with hashed passwords)
+   - [ ] Add validation and error handling for registration
+2. **Job Management**
+   - [ ] Enable adding new jobs from the UI
+   - [ ] Connect job creation to the database and API
+   - [ ] Allow editing and deleting jobs
+3. **User-Specific Features**
+   - [ ] Display jobs, clients, and data specific to the logged-in user
+   - [ ] Add user profile page (view/update user info)
+   - [ ] Add role-based access (admin vs. regular user)
 
 ---
 

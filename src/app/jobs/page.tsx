@@ -27,6 +27,9 @@ import {
 import Layout from '../../components/Layout';
 import { alpha, useTheme } from '@mui/material/styles';
 import { motion } from 'framer-motion';
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
 const MotionPaper = motion(Paper);
 const MotionTableRow = motion(TableRow);
@@ -103,6 +106,17 @@ const getStatusColor = (status: string) => {
 };
 
 export default function Jobs() {
+  const { status } = useSession();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.push("/login");
+    }
+  }, [status, router]);
+
+  if (status === "loading") return <div>Loading...</div>;
+
   const theme = useTheme();
 
   return (

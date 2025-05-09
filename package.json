@@ -23,7 +23,7 @@
     "@mui/material": "5.15.11",
     "@mui/material-nextjs": "5.15.11",
     "@mui/x-charts": "6.19.5",
-    "@prisma/client": "5.10.2",
+    "@prisma/client": "^5.10.2",
     "axios": "1.6.7",
     "bcryptjs": "2.4.3",
     "date-fns": "3.3.1",

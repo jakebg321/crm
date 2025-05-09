@@ -1,0 +1,144 @@
+# YardBase CRM - System Overview
+
+## Project Architecture
+YardBase CRM is a Next.js application built with TypeScript, using a modern stack of technologies for a full-featured landscape business management system.
+
+### Core Technologies
+- Next.js (App Router)
+- TypeScript
+- Material-UI
+- PostgreSQL
+- Prisma ORM
+- NextAuth.js
+
+## File Structure & Purpose
+
+### Root Configuration Files
+- `package.json`: Defines project dependencies and scripts
+- `next.config.js`: Next.js configuration
+- `tsconfig.json`: TypeScript configuration
+- `postcss.config.mjs`: PostCSS configuration for styling
+- `eslint.config.mjs`: ESLint configuration for code quality
+- `dbConfg.txt`: Database setup instructions and configuration
+
+### Database & Schema
+- `prisma/schema.prisma`: Core data model defining:
+  - Users (with role-based access)
+  - Clients
+  - Jobs (with status tracking)
+  - Estimates
+  - Line Items
+  - Notes
+- `prisma/seed.ts`: Database seeding script for initial data
+- `prisma/migrations/`: Database migration history
+
+### Source Code Structure (`src/`)
+1. **App Directory (`src/app/`)**
+   - `layout.tsx`: Root layout component
+   - `page.tsx`: Dashboard page
+   - `providers.tsx`: Global providers (auth, theme)
+   - `loading.tsx`: Loading states
+   - `error.tsx`: Error handling
+   
+   Feature Routes:
+   - `/login`: Authentication
+   - `/clients`: Client management
+   - `/jobs`: Job management
+   - `/schedule`: Scheduling system
+   - `/auth`: Authentication API routes
+
+2. **Components (`src/components/`)**
+   - Reusable UI components
+   - Layout components
+   - Feature-specific components
+
+3. **Lib (`src/lib/`)**
+   - Utility functions
+   - API handlers
+   - Database clients
+   - Authentication logic
+
+4. **Styles (`src/app/styles/`)**
+   - Theme configuration
+   - Global styles
+   - Material-UI customization
+
+## Data Flow
+1. **Authentication Flow**
+   - NextAuth.js handles authentication
+   - JWT-based sessions
+   - Role-based access control (ADMIN, MANAGER, STAFF)
+
+2. **Database Operations**
+   - Prisma ORM manages all database operations
+   - Models are defined in schema.prisma
+   - Migrations handle schema changes
+   - Seed data provides initial test data
+
+3. **UI/UX Architecture**
+   - Material-UI components with custom theme
+   - Responsive design
+   - Consistent styling across all pages
+   - Dashboard serves as UI/UX reference
+
+## Key Features
+1. **Dashboard**
+   - Analytics and overview
+   - Quick actions
+   - Status updates
+
+2. **Client Management**
+   - Client profiles
+   - Contact information
+   - Job history
+
+3. **Job Management**
+   - Job creation and tracking
+   - Status updates
+   - Assignment to staff
+   - Notes and documentation
+
+4. **Estimate System**
+   - Create and manage estimates
+   - Line item tracking
+   - Status management
+   - Client approval workflow
+
+5. **Scheduling**
+   - Job scheduling
+   - Calendar integration
+   - Resource allocation
+
+## Development Workflow
+1. **Setup**
+   - Install dependencies
+   - Configure database
+   - Run migrations
+   - Seed initial data
+
+2. **Development**
+   - Follow theme guidelines
+   - Use provided components
+   - Maintain consistent UI/UX
+   - Update tracker.txt for changes
+
+3. **Testing**
+   - Test all features
+   - Verify authentication
+   - Check role-based access
+   - Validate data integrity
+
+## Security Considerations
+- Password hashing
+- JWT-based authentication
+- Role-based access control
+- Protected API routes
+- Secure database connections
+
+## Deployment
+- Next.js production build
+- PostgreSQL database
+- Environment configuration
+- Secure credential management
+
+This overview provides a high-level understanding of the YardBase CRM system architecture and how its components work together to provide a comprehensive landscape business management solution. 
