@@ -316,7 +316,7 @@ export default function ClientDetails() {
                 Recent Jobs
               </Typography>
               <Grid container spacing={2}>
-                {client.jobs.map((job) => (
+                {(client.jobs || []).map((job) => (
                   <Grid item xs={12} sm={6} md={4} key={job.id}>
                     <Card
                       sx={{

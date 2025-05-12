@@ -215,37 +215,63 @@ export async function POST(request: Request) {
       assignedToId,
     } = body;
 
+    // Helper to normalize date strings to ISO-8601 with seconds
+    function normalizeDate(dateStr) {
+      if (!dateStr) return null;
+      // If already has seconds, return as is
+      if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(dateStr)) return dateStr;
+      // If matches yyyy-mm-ddThh:mm, add :00
+      if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(dateStr)) return dateStr + ':00';
+      return dateStr; // fallback, let Prisma throw if truly invalid
+    }
+
+    const safeJobData = {
+      title,
+      description: description || null,
+      type: type || null,
+      startDate: startDate ? new Date(normalizeDate(startDate)) : null,
+      endDate: endDate ? new Date(normalizeDate(endDate)) : null,
+      price: price === '' ? null : price,
+      clientId: clientId || null,
+      assignedToId: assignedToId || null,
+      createdById: session.user.id,
+    };
+
     console.log('Received job data:', { title, type, startDate, clientId, assignedToId });
 
     // Validate required fields
-    if (!title || !type || !startDate || !price || !clientId || !assignedToId) {
-      console.log('Missing required fields');
+    if (!title) {
+      console.log('Missing required field: title');
       return NextResponse.json(
-        { error: 'Missing required fields' },
+        { error: 'Title is required' },
         { status: 400 }
       );
     }
     
-    // Verify client and assignedTo exist
+    // Verify client and assignedTo exist if provided
     try {
-      const clientExists = await prisma.client.findUnique({
-        where: { id: clientId },
-        select: { id: true }
-      });
-      
-      if (!clientExists) {
-        console.log(`Client ID ${clientId} not found in database`);
-        return NextResponse.json({ error: 'Client not found' }, { status: 404 });
+      if (clientId) {
+        const clientExists = await prisma.client.findUnique({
+          where: { id: clientId },
+          select: { id: true }
+        });
+        
+        if (!clientExists) {
+          console.log(`Client ID ${clientId} not found in database`);
+          return NextResponse.json({ error: 'Client not found' }, { status: 404 });
+        }
       }
       
-      const assignedToExists = await prisma.user.findUnique({
-        where: { id: assignedToId },
-        select: { id: true }
-      });
-      
-      if (!assignedToExists) {
-        console.log(`AssignedTo user ID ${assignedToId} not found in database`);
-        return NextResponse.json({ error: 'Assigned user not found' }, { status: 404 });
+      if (assignedToId) {
+        const assignedToExists = await prisma.user.findUnique({
+          where: { id: assignedToId },
+          select: { id: true }
+        });
+        
+        if (!assignedToExists) {
+          console.log(`AssignedTo user ID ${assignedToId} not found in database`);
+          return NextResponse.json({ error: 'Assigned user not found' }, { status: 404 });
+        }
       }
     } catch (entityError) {
       console.error('Error verifying client/assignedTo existence:', entityError);
@@ -257,17 +283,7 @@ export async function POST(request: Request) {
 
     try {
       const job = await prisma.job.create({
-        data: {
-          title,
-          description,
-          type,
-          startDate: new Date(startDate),
-          endDate: endDate ? new Date(endDate) : null,
-          price,
-          clientId,
-          assignedToId,
-          createdById: session.user.id,
-        },
+        data: safeJobData,
         include: {
           client: true,
           assignedTo: true,

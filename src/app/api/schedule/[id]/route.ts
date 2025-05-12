@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '@/app/api/auth/nextauth/routes';
+import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 
 // GET /api/schedule/[id] - Get a specific job
 export async function GET(
@@ -10,12 +10,18 @@ export async function GET(
 ) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session) {
+    if (!session || !session.user || !session.user.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const job = await prisma.job.findUnique({
-      where: { id: params.id },
+    console.log('Looking for job ID:', params.id);
+    console.log('Current user ID:', session.user.id);
+    const userJobs = await prisma.job.findMany({ where: { createdById: session.user.id } });
+    console.log('All jobs for this user:', userJobs.map((j: any) => j.id));
+
+    // Only allow access to jobs created by the current user
+    const job = await prisma.job.findFirst({
+      where: { id: params.id, createdById: session.user.id },
       include: {
         client: true,
         assignedTo: true,

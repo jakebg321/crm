@@ -57,6 +57,12 @@ interface Job {
   };
 }
 
+function formatDateForInput(date) {
+  // Returns yyyy-MM-ddTHH:mm for datetime-local input
+  const pad = (n) => n.toString().padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
 export default function Schedule() {
   const theme = useTheme();
   const router = useRouter();
@@ -322,7 +328,15 @@ export default function Schedule() {
                       overflow: 'hidden',
                       position: 'relative',
                       borderRadius: 2,
-                      boxShadow: 'none'
+                      boxShadow: 'none',
+                      cursor: 'pointer',
+                    }}
+                    onClick={() => {
+                      setFormData(prev => ({
+                        ...prev,
+                        startDate: formatDateForInput(day),
+                      }));
+                      setOpenDialog(true);
                     }}
                   >
                     <Typography 
@@ -341,6 +355,7 @@ export default function Schedule() {
                         key={job.id}
                         label={job.title.length > 12 ? `${job.title.substring(0, 12)}...` : job.title}
                         size="small"
+                        onClick={() => router.push(`/jobs/${job.id}`)}
                         sx={{ 
                           mb: 0.5, 
                           backgroundColor: alpha(getStatusColor(job.status), 0.1),
@@ -349,8 +364,10 @@ export default function Schedule() {
                           height: '20px',
                           fontSize: '0.7rem',
                           transition: 'all 0.2s ease-in-out',
+                          cursor: 'pointer',
                           '&:hover': {
                             backgroundColor: alpha(getStatusColor(job.status), 0.2),
+                            boxShadow: `0px 2px 8px ${alpha(theme.palette.primary.main, 0.12)}`,
                           }
                         }}
                       />
@@ -391,14 +408,17 @@ export default function Schedule() {
               rows={3}
               value={formData.description}
               onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+              helperText="Optional"
             />
-            <FormControl required>
+            <FormControl>
               <InputLabel>Type</InputLabel>
               <Select
                 value={formData.type}
                 label="Type"
                 onChange={(e) => setFormData(prev => ({ ...prev, type: e.target.value }))}
+                displayEmpty
               >
+                <MenuItem value=""><em>None</em></MenuItem>
                 <MenuItem value="LAWN_MAINTENANCE">Lawn Maintenance</MenuItem>
                 <MenuItem value="LANDSCAPE_DESIGN">Landscape Design</MenuItem>
                 <MenuItem value="TREE_SERVICE">Tree Service</MenuItem>
@@ -408,56 +428,66 @@ export default function Schedule() {
                 <MenuItem value="PLANTING">Planting</MenuItem>
                 <MenuItem value="FERTILIZATION">Fertilization</MenuItem>
               </Select>
+              <Typography variant="caption" color="text.secondary">Optional</Typography>
             </FormControl>
-            <TextField
-              label="Start Date"
-              type="datetime-local"
-              value={formData.startDate}
-              onChange={(e) => setFormData(prev => ({ ...prev, startDate: e.target.value }))}
-              required
-              InputLabelProps={{ shrink: true }}
-            />
-            <TextField
-              label="End Date"
-              type="datetime-local"
-              value={formData.endDate}
-              onChange={(e) => setFormData(prev => ({ ...prev, endDate: e.target.value }))}
-              InputLabelProps={{ shrink: true }}
-            />
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <TextField
+                label="Start Date"
+                type="datetime-local"
+                value={formData.startDate}
+                onChange={(e) => setFormData(prev => ({ ...prev, startDate: e.target.value }))}
+                InputLabelProps={{ shrink: true }}
+                helperText="Optional"
+                fullWidth
+              />
+              {formData.startDate && (
+                <Button onClick={() => setFormData(prev => ({ ...prev, startDate: '' }))} size="small">Clear</Button>
+              )}
+            </Box>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <TextField
+                label="End Date"
+                type="datetime-local"
+                value={formData.endDate}
+                onChange={(e) => setFormData(prev => ({ ...prev, endDate: e.target.value }))}
+                InputLabelProps={{ shrink: true }}
+                helperText="Optional"
+                fullWidth
+              />
+              {formData.endDate && (
+                <Button onClick={() => setFormData(prev => ({ ...prev, endDate: '' }))} size="small">Clear</Button>
+              )}
+            </Box>
             <TextField
               label="Price"
               type="number"
               value={formData.price}
               onChange={(e) => setFormData(prev => ({ ...prev, price: e.target.value }))}
-              required
-              InputProps={{
-                startAdornment: <Typography sx={{ mr: 1 }}>$</Typography>,
-              }}
+              helperText="Optional"
+              InputProps={{ startAdornment: <Typography sx={{ mr: 1 }}>$</Typography> }}
             />
-            <FormControl required>
+            <FormControl fullWidth>
               <InputLabel>Client</InputLabel>
               <Select
                 value={formData.clientId}
                 label="Client"
                 onChange={(e) => setFormData(prev => ({ ...prev, clientId: e.target.value }))}
+                displayEmpty
               >
-                {/* We'll need to fetch clients for this */}
+                <MenuItem value=""><em>None</em></MenuItem>
+                {/* TODO: Map real clients here */}
                 <MenuItem value="1">John Doe</MenuItem>
                 <MenuItem value="2">Jane Smith</MenuItem>
               </Select>
+              <Typography variant="caption" color="text.secondary">Optional</Typography>
             </FormControl>
-            <FormControl required>
-              <InputLabel>Assigned To</InputLabel>
-              <Select
-                value={formData.assignedToId}
-                label="Assigned To"
-                onChange={(e) => setFormData(prev => ({ ...prev, assignedToId: e.target.value }))}
-              >
-                {/* We'll need to fetch staff for this */}
-                <MenuItem value="1">Staff Member 1</MenuItem>
-                <MenuItem value="2">Staff Member 2</MenuItem>
-              </Select>
-            </FormControl>
+            <TextField
+              label="Assigned To (User ID)"
+              value={formData.assignedToId}
+              onChange={e => setFormData(prev => ({ ...prev, assignedToId: e.target.value }))}
+              placeholder="Leave blank for none"
+              helperText="Optional"
+            />
           </Box>
         </DialogContent>
         <DialogActions>
@@ -465,7 +495,7 @@ export default function Schedule() {
           <Button 
             variant="contained" 
             onClick={handleAddJob}
-            disabled={!formData.title || !formData.type || !formData.startDate || !formData.price || !formData.clientId || !formData.assignedToId}
+            disabled={!formData.title}
           >
             Add Job
           </Button>

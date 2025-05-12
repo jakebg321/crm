@@ -1,0 +1,19 @@
+-- DropForeignKey
+ALTER TABLE "Job" DROP CONSTRAINT "Job_assignedToId_fkey";
+
+-- DropForeignKey
+ALTER TABLE "Job" DROP CONSTRAINT "Job_clientId_fkey";
+
+-- AlterTable
+ALTER TABLE "Job" ALTER COLUMN "description" DROP NOT NULL,
+ALTER COLUMN "type" DROP NOT NULL,
+ALTER COLUMN "startDate" DROP NOT NULL,
+ALTER COLUMN "price" DROP NOT NULL,
+ALTER COLUMN "clientId" DROP NOT NULL,
+ALTER COLUMN "assignedToId" DROP NOT NULL;
+
+-- AddForeignKey
+ALTER TABLE "Job" ADD CONSTRAINT "Job_assignedToId_fkey" FOREIGN KEY ("assignedToId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Job" ADD CONSTRAINT "Job_clientId_fkey" FOREIGN KEY ("clientId") REFERENCES "Client"("id") ON DELETE SET NULL ON UPDATE CASCADE;

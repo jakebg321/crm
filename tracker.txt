@@ -1,6 +1,97 @@
 # YardBase CRM – Comprehensive Project Tracker & Developer Guide
 
-_Last updated: 2024-06-08_
+_Last updated: 2024-06-09_
+
+---
+
+## 📋 Project Overview
+YardBase CRM is a modern, full-featured customer relationship management system tailored for landscape businesses. It is built with:
+- **Next.js 14+ (TypeScript)** with the App Router.
+- **Material-UI (MUI)** for the UI.
+- **PostgreSQL** (via Prisma ORM) for the database.
+- **NextAuth.js** for authentication.
+- Modular structure: all code and config are inside the `/crm` folder.
+
+---
+
+## 🏁 Project Goals
+- Provide dashboard analytics, job and client management, scheduling, estimates/invoicing, and employee management.
+- Ensure robust authentication and user-specific data isolation.
+- Maintain a modern, consistent, and easily extensible codebase.
+- Document all issues, fixes, and gotchas for future developers.
+
+---
+
+## 🚀 Recent Fixes & Debugging Log (2024-06-09)
+
+### Major Issues & Solutions
+
+#### 1. **React Error: Objects are not valid as a React child**
+- **Problem:** Rendering a full object (e.g., `job.client`) directly in JSX caused the error: `Objects are not valid as a React child (found: object with keys ...)`.
+- **Solution:** Updated all table and list renderings to use a property (e.g., `job.client?.name || 'N/A'`) instead of the full object. Added TypeScript interfaces for `Job` and `Client` to enforce correct usage.
+
+#### 2. **TypeScript & Linter Errors in Jobs and Dashboard Pages**
+- **Problem:** State variables for jobs and clients were typed as `any[]` or `never[]`, causing linter/type errors and runtime issues.
+- **Solution:** Defined explicit interfaces for `Job` and `Client` and used them in all relevant `useState` hooks. This fixed type errors and improved code safety.
+
+#### 3. **Framer Motion + MUI TableRow Animation Issues**
+- **Problem:** Attempting to animate table rows with `<motion.tr>` or `<motion(TableRow)>` caused invalid DOM nesting (`<tr>` inside `<tr>`) and type errors.
+- **Solution:** Reverted to using plain `<TableRow>` for now. If animation is needed, use a custom wrapper or `forwardRef` pattern compatible with MUI and Framer Motion.
+
+#### 4. **Cannot read properties of undefined (reading 'jobs')**
+- **Problem:** The client details page crashed if the API response for a client was missing the `jobs` array.
+- **Solution:**
+  - **Frontend:** Used `(client.jobs || []).map(...)` to defensively handle missing arrays.
+  - **Backend:** Updated `/api/clients/[id]` to always return `jobs`, `estimates`, and `_count` (with defaults if missing) to guarantee frontend safety.
+
+#### 5. **API Consistency and Defensive Coding**
+- **Problem:** Inconsistent API responses (sometimes missing fields) led to frontend crashes and unpredictable UI.
+- **Solution:**
+  - All API endpoints now guarantee consistent response shapes (arrays always present, `_count` always present, etc.).
+  - Added defensive coding patterns in the frontend to handle missing/null data gracefully.
+
+#### 6. **General Error Handling Improvements**
+- **Problem:** Unhandled promise rejections and ambiguous error messages in both frontend and backend.
+- **Solution:**
+  - All async/await blocks now have robust try/catch with user-friendly error messages.
+  - Backend logs errors to the console for debugging, and frontend displays clear error/snackbar messages.
+
+---
+
+## 🛠️ Key Codebase Changes (2024-06-09)
+
+- **API:** `/api/clients/[id]/route.ts` now always returns `jobs`, `estimates`, and `_count` (with defaults if missing).
+- **Frontend:**
+  - All table/list renderings use property access (e.g., `client.name`) instead of rendering objects.
+  - Defensive checks for all array accesses (e.g., `(client.jobs || []).map(...)`).
+  - TypeScript interfaces for all major data types (`Job`, `Client`, etc.) and correct usage in state.
+  - Removed invalid Framer Motion + MUI table row animation patterns.
+- **Error Handling:**
+  - All async/await code wrapped in try/catch with clear error messages.
+  - User-facing errors shown via MUI Snackbar/Alert components.
+
+---
+
+## 🧑‍💻 Developer Guidance & Gotchas
+
+- **Always check API responses for required fields.** If you add new fields, update both backend and frontend.
+- **Never render raw objects in JSX.** Always render a property or map to JSX.
+- **Type your state!** Use TypeScript interfaces for all state variables and API responses.
+- **If you see a crash on a details page, check the API response shape first.**
+- **For MUI + Framer Motion animation, use only supported patterns.** If you need animated table rows, use a wrapper or consult the latest MUI/Framer Motion docs.
+- **Keep this tracker updated with every major debugging or refactor session.**
+
+---
+
+## 📝 Next Steps
+- Refactor any remaining legacy code to use the new defensive/data-safe patterns.
+- Add more robust integration tests for API and frontend.
+- Consider reintroducing row animation with a supported pattern if desired.
+- Continue to document all new issues and solutions here for future developers.
+
+---
+
+# End of Log (2024-06-09)
 
 ---
 
@@ -228,7 +319,7 @@ This guide provides an overview of the system architecture and a recommended wor
 4.  **Install Dependencies:** Run `npm install`.
 5.  **Prisma Setup:**
     *   **Generate Client:** `npx prisma generate --schema=prisma/schema.prisma`. This creates/updates the Prisma client in `node_modules/.prisma/client`.
-    *   **Database Migrations:** `npx prisma migrate dev --name initial-setup --schema=prisma/schema.prisma`. This will create the database if it doesn't exist and apply all migrations. (Alternatively, for an existing DB or simpler sync in dev: `npx prisma db push --schema=prisma/schema.prisma`).
+    *   **Database Migrations:** `npx prisma migrate dev --schema=prisma/schema.prisma`. This will create the database if it doesn't exist and apply all migrations. (Alternatively, for an existing DB or simpler sync in dev: `npx prisma db push --schema=prisma/schema.prisma`).
 6.  **Start Dev Server:** `npm run dev`.
 7.  **Initial Test:** Open `http://localhost:3000` in your browser. Try logging in or registering. Check the browser console and terminal (running `npm run dev`) for any errors.
 

@@ -15,12 +15,20 @@ export async function GET(request, { params }) {
       include: {
         jobs: true,
         estimates: true,
+        _count: {
+          select: { jobs: true, estimates: true }
+        }
       },
     });
     if (!client) {
       return NextResponse.json({ error: 'Client not found' }, { status: 404 });
     }
-    return NextResponse.json(client);
+    return NextResponse.json({
+      ...client,
+      jobs: client.jobs || [],
+      estimates: client.estimates || [],
+      _count: client._count || { jobs: 0, estimates: 0 }
+    });
   } catch (error) {
     console.error('Error fetching client:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });

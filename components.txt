@@ -1,0 +1,215 @@
+# YardBase CRM - System Architecture & File Relationships
+
+## Core Architecture Overview
+
+The YardBase CRM is built using Next.js 14+ with the App Router pattern, utilizing TypeScript, Material-UI, PostgreSQL (via Prisma), and NextAuth.js. The entire application is contained within the `/crm` directory.
+
+## Directory Structure & File Relationships
+
+### 1. Root Configuration Files
+- **next.config.js**: Next.js configuration
+- **tsconfig.json**: TypeScript configuration
+- **package.json**: Project dependencies and scripts
+- **.env**: Environment variables (DATABASE_URL, NEXTAUTH_SECRET, NEXTAUTH_URL)
+- **prisma/schema.prisma**: Database schema definition
+
+### 2. Source Code Organization (/src)
+
+#### A. App Directory (/src/app)
+The app directory follows Next.js App Router conventions:
+
+1. **Root Layout & Pages**
+   - **layout.tsx**: Root layout component, wraps all pages
+   - **page.tsx**: Home page component
+   - **loading.tsx**: Loading state component
+   - **error.tsx**: Error boundary component
+   - **providers.tsx**: App-wide providers (SessionProvider, ThemeProvider)
+
+2. **Authentication**
+   - **/auth/signin/page.tsx**: Sign-in page
+   - **/auth/register/page.tsx**: Registration page
+   - **/login/page.tsx**: Login page
+
+3. **Feature Pages**
+   - **/clients/page.tsx**: Clients dashboard
+   - **/clients/[id]/page.tsx**: Individual client details
+   - **/jobs/page.tsx**: Jobs dashboard
+   - **/jobs/[id]/page.tsx**: Individual job details
+   - **/schedule/page.tsx**: Schedule dashboard
+   - **/schedule/[id]/page.tsx**: Individual schedule details
+
+4. **API Routes**
+   - **/api/auth/[...nextauth]/route.ts**: NextAuth.js handler
+   - **/api/auth/register/route.ts**: Registration endpoint
+   - **/api/clients/route.ts**: Client CRUD operations
+   - **/api/clients/[id]/route.ts**: Individual client operations
+   - **/api/estimates/route.ts**: Estimate CRUD operations
+   - **/api/schedule/route.ts**: Schedule CRUD operations
+   - **/api/schedule/[id]/route.ts**: Individual schedule operations
+
+5. **Styles & Theme**
+   - **/styles/theme.ts**: MUI theme configuration
+   - **/styles/useThemeUpdater.tsx**: Theme update logic
+
+#### B. Components Directory (/src/components)
+Reusable UI components:
+- **Layout.tsx**: Main layout wrapper
+- **Navigation.tsx**: Navigation component
+- **DashboardCard.tsx**: Dashboard card component
+- **ErrorBoundary.tsx**: Error boundary component
+- **ThemeDebugger.tsx**: Theme debugging component
+- **ThemeDebuggerModal.tsx**: Theme debugger modal
+- **ThemeColorPalette.tsx**: Theme color palette component
+- **ColorSaveManager.tsx**: Color save management component
+
+#### C. Library & Types
+- **/lib/prisma.ts**: Prisma client instance
+- **/types/next-auth.d.ts**: NextAuth type definitions
+
+## Data Flow & Component Relationships
+
+### 1. Authentication Flow
+1. User visits `/login` or `/auth/signin`
+2. NextAuth.js handles authentication via `/api/auth/[...nextauth]/route.ts`
+3. Session is managed by `SessionProvider` in `providers.tsx`
+4. Protected routes check session via `getServerSession(authOptions)`
+
+### 2. Client Management Flow
+1. User accesses `/clients` page
+2. Page component fetches data from `/api/clients/route.ts`
+3. Data is displayed using MUI components
+4. Individual client details accessed via `/clients/[id]`
+5. Client operations handled by `/api/clients/[id]/route.ts`
+
+### 3. Job Management Flow
+1. User accesses `/jobs` page
+2. Page component fetches data from `/api/jobs/route.ts`
+3. Jobs are displayed using MUI components
+4. Individual job details accessed via `/jobs/[id]`
+5. Job operations handled by `/api/jobs/[id]/route.ts`
+
+### 4. Schedule Management Flow
+1. User accesses `/schedule` page
+2. Page component fetches data from `/api/schedule/route.ts`
+3. Schedule is displayed using MUI components
+4. Individual schedule details accessed via `/schedule/[id]`
+5. Schedule operations handled by `/api/schedule/[id]/route.ts`
+
+## Database Schema Relationships
+
+### Core Models
+1. **User**
+   - Related to: Jobs (assignedTo, createdBy), Estimates (createdBy)
+   - Fields: id, email, name, password, role
+
+2. **Client**
+   - Related to: Jobs, Estimates
+   - Fields: id, name, email, phone, address, city, state, zipCode
+
+3. **Job**
+   - Related to: User (assignedTo, createdBy), Client, Estimate
+   - Fields: id, title, description, status, type, startDate, endDate, price
+
+4. **Estimate**
+   - Related to: Client, User (createdBy), Jobs
+   - Fields: id, title, description, status, price, validUntil
+
+5. **LineItem**
+   - Related to: Estimate
+   - Fields: id, description, quantity, unitPrice, total
+
+6. **Note**
+   - Related to: Job
+   - Fields: id, content, jobId
+
+## Theme & Styling System
+
+1. **Theme Configuration**
+   - Defined in `/src/app/styles/theme.ts`
+   - Used by MUI's ThemeProvider in `providers.tsx`
+   - Can be debugged using ThemeDebugger components
+
+2. **Theme Updates**
+   - Managed by `useThemeUpdater.tsx`
+   - Changes persisted by `ColorSaveManager.tsx`
+
+## Error Handling & Loading States
+
+1. **Error Boundaries**
+   - Global error handling via `error.tsx`
+   - Component-level error handling via `ErrorBoundary.tsx`
+
+2. **Loading States**
+   - Global loading state via `loading.tsx`
+   - Component-level loading states in individual pages
+
+## Security & Authentication
+
+1. **NextAuth.js Integration**
+   - Configuration in `/api/auth/[...nextauth]/route.ts`
+   - Session management via `SessionProvider`
+   - Type safety via `next-auth.d.ts`
+
+2. **API Route Protection**
+   - All API routes check session via `getServerSession(authOptions)`
+   - Role-based access control via `session.user.role`
+
+## Development Workflow
+
+1. **Database Changes**
+   - Modify `schema.prisma`
+   - Run `prisma generate` and `prisma migrate dev`
+   - Update API routes and components accordingly
+
+2. **API Development**
+   - Create/modify route handlers in `/api` directory
+   - Implement proper error handling and session checks
+   - Test with appropriate HTTP methods
+
+3. **Frontend Development**
+   - Create/modify pages in `/app` directory
+   - Use MUI components for consistent styling
+   - Implement proper loading and error states
+
+4. **Component Development**
+   - Create reusable components in `/components` directory
+   - Follow MUI patterns and best practices
+   - Implement proper TypeScript types
+
+## Common Patterns & Best Practices
+
+1. **API Route Pattern**
+   ```typescript
+   export async function GET(request: Request) {
+     const session = await getServerSession(authOptions);
+     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+     // ... route logic
+   }
+   ```
+
+2. **Page Component Pattern**
+   ```typescript
+   'use client';
+   import { useSession } from 'next-auth/react';
+   // ... component logic
+   ```
+
+3. **Data Fetching Pattern**
+   ```typescript
+   const [data, setData] = useState([]);
+   useEffect(() => {
+     fetch('/api/endpoint').then(res => res.json()).then(setData);
+   }, []);
+   ```
+
+4. **Error Handling Pattern**
+   ```typescript
+   try {
+     // ... operation
+   } catch (error) {
+     if (error instanceof PrismaClientKnownRequestError) {
+       // ... handle specific Prisma errors
+     }
+     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+   }
+   ```

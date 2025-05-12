@@ -42,6 +42,7 @@ import MenuItem from '@mui/material/MenuItem';
 import Snackbar from '@mui/material/Snackbar';
 import Alert from '@mui/material/Alert';
 import CircularProgress from '@mui/material/CircularProgress';
+import Menu from '@mui/material/Menu';
 
 interface Client {
   id: string;
@@ -84,6 +85,8 @@ const getStatusColor = (status: string) => {
   }
 };
 
+const MotionTableRow = motion(TableRow);
+
 export default function Jobs() {
   const { status, data: session } = useSession();
   const router = useRouter();
@@ -115,6 +118,9 @@ export default function Jobs() {
     completed: 0,
     pending: 0,
   });
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
+  const openMenu = Boolean(anchorEl);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -252,6 +258,33 @@ export default function Jobs() {
       setClientError('Failed to add client (network error)');
     } finally {
       setClientLoading(false);
+    }
+  };
+
+  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>, jobId: string) => {
+    setAnchorEl(event.currentTarget);
+    setSelectedJobId(jobId);
+  };
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+    setSelectedJobId(null);
+  };
+
+  const handleStatusChange = async (status: string) => {
+    if (!selectedJobId) return;
+    try {
+      const res = await fetch(`/api/schedule/${selectedJobId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      });
+      if (!res.ok) throw new Error('Failed to update job status');
+      setSnackbar({ open: true, message: `Job marked as ${status.replace('_', ' ').toLowerCase()}`, severity: 'success' });
+      fetchJobs();
+    } catch (err) {
+      setSnackbar({ open: true, message: 'Failed to update job status', severity: 'error' });
+    } finally {
+      handleMenuClose();
     }
   };
 
@@ -457,64 +490,63 @@ export default function Jobs() {
                   </TableRow>
                 ) : (
                   jobs.map((job, index) => (
-                    <motion.tr
+                    <TableRow
                       key={job.id}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.3, delay: index * 0.05 }}
+                      sx={{ 
+                        '&:last-child td, &:last-child th': { border: 0 },
+                        '&:hover': {
+                          backgroundColor: alpha(theme.palette.primary.main, 0.04),
+                        },
+                        cursor: 'pointer',
+                        transition: 'all 0.2s'
+                      }}
+                      onClick={() => router.push(`/jobs/${job.id}`)}
+                      tabIndex={0}
+                      role="button"
+                      aria-label={`Edit job ${job.id}`}
                     >
-                      <TableRow
-                        sx={{ 
-                          '&:last-child td, &:last-child th': { border: 0 },
-                          '&:hover': {
-                            backgroundColor: alpha(theme.palette.primary.main, 0.02),
-                          },
-                          cursor: 'pointer',
-                          transition: 'all 0.2s'
-                        }}
+                      <TableCell 
+                        component="th" 
+                        scope="row"
+                        sx={{ fontWeight: 600, color: theme.palette.primary.main }}
                       >
-                        <TableCell 
-                          component="th" 
-                          scope="row"
-                          sx={{ fontWeight: 600, color: theme.palette.primary.main }}
+                        {job.id}
+                      </TableCell>
+                      <TableCell sx={{ fontWeight: 500 }}>{job.client?.name || 'N/A'}</TableCell>
+                      <TableCell>{job.client?.address || 'N/A'}</TableCell>
+                      <TableCell>{job.type}</TableCell>
+                      <TableCell>
+                        <Chip
+                          label={job.status}
+                          color={getStatusColor(job.status)}
+                          size="small"
+                          sx={{ 
+                            fontWeight: 500,
+                            '&:hover': {
+                              transform: 'translateY(-2px)',
+                              boxShadow: `0px 4px 8px ${alpha(theme.palette.primary.main, 0.1)}`,
+                            }
+                          }}
+                        />
+                      </TableCell>
+                      <TableCell>{job.startDate ? new Date(job.startDate).toLocaleDateString() : 'N/A'}</TableCell>
+                      <TableCell>{job.startDate ? new Date(job.startDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'N/A'}</TableCell>
+                      <TableCell align="right">
+                        <IconButton 
+                          size="small"
+                          sx={{ 
+                            color: theme.palette.text.secondary,
+                            '&:hover': {
+                              color: theme.palette.primary.main,
+                              backgroundColor: alpha(theme.palette.primary.main, 0.1),
+                            }
+                          }}
+                          onClick={e => { e.stopPropagation(); handleMenuOpen(e, job.id); }}
                         >
-                          {job.id}
-                        </TableCell>
-                        <TableCell sx={{ fontWeight: 500 }}>{job.client?.name || 'N/A'}</TableCell>
-                        <TableCell>{job.address}</TableCell>
-                        <TableCell>{job.type}</TableCell>
-                        <TableCell>
-                          <Chip
-                            label={job.status}
-                            color={getStatusColor(job.status)}
-                            size="small"
-                            sx={{ 
-                              fontWeight: 500,
-                              '&:hover': {
-                                transform: 'translateY(-2px)',
-                                boxShadow: `0px 4px 8px ${alpha(theme.palette.primary.main, 0.1)}`,
-                              }
-                            }}
-                          />
-                        </TableCell>
-                        <TableCell>{job.date}</TableCell>
-                        <TableCell>{job.time}</TableCell>
-                        <TableCell align="right">
-                          <IconButton 
-                            size="small"
-                            sx={{ 
-                              color: theme.palette.text.secondary,
-                              '&:hover': {
-                                color: theme.palette.primary.main,
-                                backgroundColor: alpha(theme.palette.primary.main, 0.1),
-                              }
-                            }}
-                          >
-                            <MoreVertIcon fontSize="small" />
-                          </IconButton>
-                        </TableCell>
-                      </TableRow>
-                    </motion.tr>
+                          <MoreVertIcon fontSize="small" />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
                   ))
                 )}
               </TableBody>
@@ -528,10 +560,11 @@ export default function Jobs() {
         <DialogContent>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 2 }}>
             <TextField label="Title" value={formData.title} onChange={e => setFormData(prev => ({ ...prev, title: e.target.value }))} required />
-            <TextField label="Description" multiline rows={3} value={formData.description} onChange={e => setFormData(prev => ({ ...prev, description: e.target.value }))} />
-            <FormControl required>
+            <TextField label="Description" multiline rows={3} value={formData.description} onChange={e => setFormData(prev => ({ ...prev, description: e.target.value }))} helperText="Optional" />
+            <FormControl>
               <InputLabel>Type</InputLabel>
-              <Select value={formData.type} label="Type" onChange={e => setFormData(prev => ({ ...prev, type: e.target.value }))}>
+              <Select value={formData.type} label="Type" onChange={e => setFormData(prev => ({ ...prev, type: e.target.value }))} displayEmpty>
+                <MenuItem value=""><em>None</em></MenuItem>
                 <MenuItem value="LAWN_MAINTENANCE">Lawn Maintenance</MenuItem>
                 <MenuItem value="LANDSCAPE_DESIGN">Landscape Design</MenuItem>
                 <MenuItem value="TREE_SERVICE">Tree Service</MenuItem>
@@ -541,18 +574,31 @@ export default function Jobs() {
                 <MenuItem value="PLANTING">Planting</MenuItem>
                 <MenuItem value="FERTILIZATION">Fertilization</MenuItem>
               </Select>
+              <Typography variant="caption" color="text.secondary">Optional</Typography>
             </FormControl>
-            <TextField label="Start Date" type="datetime-local" value={formData.startDate} onChange={e => setFormData(prev => ({ ...prev, startDate: e.target.value }))} required InputLabelProps={{ shrink: true }} />
-            <TextField label="End Date" type="datetime-local" value={formData.endDate} onChange={e => setFormData(prev => ({ ...prev, endDate: e.target.value }))} InputLabelProps={{ shrink: true }} />
-            <TextField label="Price" type="number" value={formData.price} onChange={e => setFormData(prev => ({ ...prev, price: e.target.value }))} required />
-            <FormControl required fullWidth>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <TextField label="Start Date" type="datetime-local" value={formData.startDate} onChange={e => setFormData(prev => ({ ...prev, startDate: e.target.value }))} InputLabelProps={{ shrink: true }} helperText="Optional" fullWidth />
+              {formData.startDate && (
+                <Button onClick={() => setFormData(prev => ({ ...prev, startDate: '' }))} size="small">Clear</Button>
+              )}
+            </Box>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <TextField label="End Date" type="datetime-local" value={formData.endDate} onChange={e => setFormData(prev => ({ ...prev, endDate: e.target.value }))} InputLabelProps={{ shrink: true }} helperText="Optional" fullWidth />
+              {formData.endDate && (
+                <Button onClick={() => setFormData(prev => ({ ...prev, endDate: '' }))} size="small">Clear</Button>
+              )}
+            </Box>
+            <TextField label="Price" type="number" value={formData.price} onChange={e => setFormData(prev => ({ ...prev, price: e.target.value }))} helperText="Optional" />
+            <FormControl fullWidth>
               <InputLabel>Client</InputLabel>
               <Select
                 value={formData.clientId}
                 label="Client"
                 onChange={e => setFormData(prev => ({ ...prev, clientId: e.target.value }))}
                 endAdornment={clientsLoading ? <CircularProgress size={20} /> : null}
+                displayEmpty
               >
+                <MenuItem value=""><em>None</em></MenuItem>
                 {clients.map(client => (
                   <MenuItem key={client.id} value={client.id}>{client.name} ({client.email})</MenuItem>
                 ))}
@@ -561,13 +607,14 @@ export default function Jobs() {
                   + Add New Client
                 </MenuItem>
               </Select>
+              <Typography variant="caption" color="text.secondary">Optional</Typography>
             </FormControl>
-            <TextField label="Assigned To (User ID)" value={formData.assignedToId} onChange={e => setFormData(prev => ({ ...prev, assignedToId: e.target.value }))} required />
+            <TextField label="Assigned To (User ID)" value={formData.assignedToId} onChange={e => setFormData(prev => ({ ...prev, assignedToId: e.target.value }))} placeholder="Leave blank for none" helperText="Optional" />
           </Box>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenDialog(false)}>Cancel</Button>
-          <Button variant="contained" onClick={handleAddJob} disabled={!formData.title || !formData.type || !formData.startDate || !formData.price || !formData.clientId || !formData.assignedToId}>
+          <Button variant="contained" onClick={handleAddJob} disabled={!formData.title}>
             Add Job
           </Button>
         </DialogActions>
@@ -600,6 +647,16 @@ export default function Jobs() {
           {snackbar.message}
         </Alert>
       </Snackbar>
+      <Menu
+        anchorEl={anchorEl}
+        open={openMenu}
+        onClose={handleMenuClose}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+      >
+        <MenuItem onClick={() => handleStatusChange('COMPLETED')}>Mark as Complete</MenuItem>
+        <MenuItem onClick={() => handleStatusChange('CANCELLED')}>Mark as Cancelled</MenuItem>
+      </Menu>
     </Layout>
   );
 } 

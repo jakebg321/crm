@@ -42,9 +42,11 @@ export const authOptions: AuthOptions = {
   ],
   session: {
     strategy: 'jwt',
+    maxAge: 30 * 24 * 60 * 60, // 30 days
   },
   pages: {
     signIn: '/login',
+    error: '/auth/error',
   },
   callbacks: {
     async session({ session, token }) {
@@ -63,7 +65,8 @@ export const authOptions: AuthOptions = {
       }
       return token;
     }
-  }
+  },
+  debug: process.env.NODE_ENV === 'development',
 };
 
 const handler = NextAuth(authOptions);
