@@ -1,93 +1,130 @@
-# YardBase CRM – Comprehensive Project Tracker & Developer Guide
+# YardBase CRM – Comprehensive Developer Tracker & Onboarding Guide
 
 _Last updated: 2024-06-09_
 
 ---
 
 ## 📋 Project Overview
-YardBase CRM is a modern, full-featured customer relationship management system tailored for landscape businesses. It is built with:
-- **Next.js 14+ (TypeScript)** with the App Router.
-- **Material-UI (MUI)** for the UI.
-- **PostgreSQL** (via Prisma ORM) for the database.
-- **NextAuth.js** for authentication.
-- Modular structure: all code and config are inside the `/crm` folder.
+YardBase CRM is a modern CRM for landscape businesses, built with:
+- **Next.js 14+ (App Router, TypeScript)**
+- **Material-UI (MUI)**
+- **PostgreSQL** (Prisma ORM)
+- **NextAuth.js** for authentication
+- Modular codebase: all code and config are inside the `/crm` folder
 
 ---
 
 ## 🏁 Project Goals
-- Provide dashboard analytics, job and client management, scheduling, estimates/invoicing, and employee management.
-- Ensure robust authentication and user-specific data isolation.
-- Maintain a modern, consistent, and easily extensible codebase.
-- Document all issues, fixes, and gotchas for future developers.
+- Dashboard analytics, job/client management, scheduling, estimates/invoicing, employee management
+- Robust authentication and user-specific data isolation
+- Modern, consistent, and extensible codebase
+- Document all issues, fixes, and gotchas for future developers
 
 ---
 
-## 🚀 Recent Fixes & Debugging Log (2024-06-09)
+## 🛠️ Major Changes & Fixes (2024-06-09 Session)
 
-### Major Issues & Solutions
-
-#### 1. **React Error: Objects are not valid as a React child**
-- **Problem:** Rendering a full object (e.g., `job.client`) directly in JSX caused the error: `Objects are not valid as a React child (found: object with keys ...)`.
-- **Solution:** Updated all table and list renderings to use a property (e.g., `job.client?.name || 'N/A'`) instead of the full object. Added TypeScript interfaces for `Job` and `Client` to enforce correct usage.
-
-#### 2. **TypeScript & Linter Errors in Jobs and Dashboard Pages**
-- **Problem:** State variables for jobs and clients were typed as `any[]` or `never[]`, causing linter/type errors and runtime issues.
-- **Solution:** Defined explicit interfaces for `Job` and `Client` and used them in all relevant `useState` hooks. This fixed type errors and improved code safety.
-
-#### 3. **Framer Motion + MUI TableRow Animation Issues**
-- **Problem:** Attempting to animate table rows with `<motion.tr>` or `<motion(TableRow)>` caused invalid DOM nesting (`<tr>` inside `<tr>`) and type errors.
-- **Solution:** Reverted to using plain `<TableRow>` for now. If animation is needed, use a custom wrapper or `forwardRef` pattern compatible with MUI and Framer Motion.
-
-#### 4. **Cannot read properties of undefined (reading 'jobs')**
-- **Problem:** The client details page crashed if the API response for a client was missing the `jobs` array.
-- **Solution:**
-  - **Frontend:** Used `(client.jobs || []).map(...)` to defensively handle missing arrays.
-  - **Backend:** Updated `/api/clients/[id]` to always return `jobs`, `estimates`, and `_count` (with defaults if missing) to guarantee frontend safety.
-
-#### 5. **API Consistency and Defensive Coding**
-- **Problem:** Inconsistent API responses (sometimes missing fields) led to frontend crashes and unpredictable UI.
-- **Solution:**
-  - All API endpoints now guarantee consistent response shapes (arrays always present, `_count` always present, etc.).
-  - Added defensive coding patterns in the frontend to handle missing/null data gracefully.
-
-#### 6. **General Error Handling Improvements**
-- **Problem:** Unhandled promise rejections and ambiguous error messages in both frontend and backend.
-- **Solution:**
-  - All async/await blocks now have robust try/catch with user-friendly error messages.
-  - Backend logs errors to the console for debugging, and frontend displays clear error/snackbar messages.
-
----
-
-## 🛠️ Key Codebase Changes (2024-06-09)
-
-- **API:** `/api/clients/[id]/route.ts` now always returns `jobs`, `estimates`, and `_count` (with defaults if missing).
+### 1. **Job Creation & Editing: Optional Fields**
 - **Frontend:**
-  - All table/list renderings use property access (e.g., `client.name`) instead of rendering objects.
-  - Defensive checks for all array accesses (e.g., `(client.jobs || []).map(...)`).
-  - TypeScript interfaces for all major data types (`Job`, `Client`, etc.) and correct usage in state.
-  - Removed invalid Framer Motion + MUI table row animation patterns.
-- **Error Handling:**
-  - All async/await code wrapped in try/catch with clear error messages.
-  - User-facing errors shown via MUI Snackbar/Alert components.
+  - All job fields except `title` are now optional in both Jobs and Schedule pages.
+  - Add Job dialog: clear buttons for date fields, "None" options for dropdowns, helper text for all optional fields.
+  - Clicking a day in the schedule opens the Add Job dialog with that date pre-filled.
+  - Defensive coding: all form fields can be left blank except title.
+- **Backend:**
+  - API `/api/schedule` POST handler: converts empty strings to `null` for all optional fields.
+  - Date fields (`startDate`, `endDate`) are normalized to valid ISO strings and converted to JS `Date` objects before saving to Prisma.
+  - Only `title` and `createdById` are required for job creation.
+- **Prisma Schema:**
+  - `Job` model: `description`, `type`, `startDate`, `endDate`, `price`, `clientId`, `assignedToId` are all optional.
+  - Relations to `Client` and `User` are now optional.
+  - Migration created and applied.
+
+### 2. **Frontend UX & UI Consistency**
+- Add Job dialogs (Jobs & Schedule) now visually indicate optional fields.
+- Date pickers have clear buttons; dropdowns have "None" options; helper text for all optional fields.
+- Clicking a day in the schedule opens the Add Job dialog with that date pre-filled (in correct format for datetime-local input).
+- Clicking a job chip in the schedule navigates to the job details page (`/jobs/[id]`).
+- All table/list renderings use property access (e.g., `job.client?.name`), never render raw objects.
+- Address, date, and time columns in the jobs table now display correct info:
+  - Address: `job.client?.address`
+  - Date: formatted from `job.startDate`
+  - Time: formatted from `job.startDate`
+
+### 3. **Job Details Page & API Consistency**
+- Job details page fetches from `/api/schedule/[id]` (fixed from invalid route).
+- PUT requests for job updates also use `/api/schedule/[id]`.
+- All API endpoints now return consistent shapes (arrays always present, handle missing/null data defensively).
+- Defensive checks for all array accesses and API responses.
+
+### 4. **Actions Menu for Jobs**
+- Three-dot menu on each job row opens a menu with:
+  - Mark as Complete
+  - Mark as Cancelled
+- Selecting an action updates the job status via the API and refreshes the jobs list.
+- Snackbar notifications for success/failure.
+
+### 5. **Error Handling & Defensive Coding**
+- All async/await code wrapped in try/catch with user-friendly error messages.
+- Backend logs errors to the console for debugging, frontend displays clear error/snackbar messages.
+- Defensive checks for all array accesses and API responses.
+- Never render raw objects in JSX—always render a property or map to JSX.
+- TypeScript interfaces for all major data types (`Job`, `Client`, etc.) and correct usage in state.
+
+### 6. **Schedule Page Improvements**
+- Each day cell in the calendar is clickable; clicking opens Add Job dialog with that date pre-filled.
+- Job chips in the calendar are clickable and navigate to job details.
+- Add Job dialog on schedule page is now consistent with jobs page (all fields optional, clear buttons, etc.).
+
+### 7. **Prisma & Database**
+- Schema changes: made job fields optional, updated relations.
+- Migration created and applied via `npx prisma migrate dev`.
+- Defensive coding in all API routes: check for user existence, handle missing/invalid data, return clear error messages.
+
+### 8. **General Project Hygiene**
+- All API endpoints and frontend pages use consistent naming and structure (Next.js App Router conventions).
+- All code is modular and type-safe.
+- Tracker file (this file) updated with every major debugging or refactor session.
 
 ---
 
 ## 🧑‍💻 Developer Guidance & Gotchas
 
-- **Always check API responses for required fields.** If you add new fields, update both backend and frontend.
+- **API Consistency:** Always check API responses for required fields. If you add new fields, update both backend and frontend.
 - **Never render raw objects in JSX.** Always render a property or map to JSX.
 - **Type your state!** Use TypeScript interfaces for all state variables and API responses.
 - **If you see a crash on a details page, check the API response shape first.**
 - **For MUI + Framer Motion animation, use only supported patterns.** If you need animated table rows, use a wrapper or consult the latest MUI/Framer Motion docs.
-- **Keep this tracker updated with every major debugging or refactor session.**
+- **Prisma:** After schema changes, always run `npx prisma migrate dev` and `npx prisma generate`.
+- **NextAuth.js:** User session is available via `useSession()` (client) or `getServerSession(authOptions)` (API routes). User roles are stored in the session and should be checked for all sensitive actions.
+- **Error Handling:** All async/await code should be wrapped in try/catch. Show user-friendly errors in the UI and log detailed errors in the backend.
+- **Keep this tracker updated** with every major debugging or refactor session for future devs.
 
 ---
 
-## 📝 Next Steps
-- Refactor any remaining legacy code to use the new defensive/data-safe patterns.
+## 🛣️ Next Steps & Roadmap
+
+### 1. **User Authentication & Roles**
+- Integrate user roles (Admin, Manager, Staff, etc.) using NextAuth.js and Prisma.
+- Restrict access to jobs, clients, and actions based on user role.
+- Ensure each user only sees and manages their own jobs/clients unless they have elevated permissions.
+- Add user management UI (invite, edit, remove users).
+
+### 2. **UI/UX Enhancements**
+- Add edit/delete options to the jobs actions menu.
+- Add confirmation dialogs for destructive actions (delete, cancel).
+- Improve job details page (show more info, allow inline editing, show job history/notes).
+- Add filtering and searching for jobs and clients.
 - Add more robust integration tests for API and frontend.
+
+### 3. **API & Backend**
+- Ensure all API endpoints are robust, secure, and return consistent data shapes.
+- Add integration tests for all major API routes.
+- Continue to document all new issues and solutions in this tracker.
+
+### 4. **General Improvements**
+- Refactor any remaining legacy code to use new defensive/data-safe patterns.
 - Consider reintroducing row animation with a supported pattern if desired.
-- Continue to document all new issues and solutions here for future developers.
+- Continue to document all new issues and solutions in this tracker.
 
 ---
 
