@@ -1,550 +1,393 @@
-# YardBase CRM – Comprehensive Developer Tracker & Onboarding Guide
+# YardBase CRM – Project Overview & Developer Onboarding Guide
 
-_Last updated: 2024-06-09_
-
----
-
-## 📋 Project Overview
-YardBase CRM is a modern CRM for landscape businesses, built with:
-- **Next.js 14+ (App Router, TypeScript)**
-- **Material-UI (MUI)**
-- **PostgreSQL** (Prisma ORM)
-- **NextAuth.js** for authentication
-- Modular codebase: all code and config are inside the `/crm` folder
+_Last updated: 2024-06-15_
 
 ---
 
-## 🏁 Project Goals
-- Dashboard analytics, job/client management, scheduling, estimates/invoicing, employee management
-- Robust authentication and user-specific data isolation
-- Modern, consistent, and extensible codebase
-- Document all issues, fixes, and gotchas for future developers
+## 📋 Project Summary
+YardBase CRM is a modern customer relationship management system built specifically for landscape businesses. It provides comprehensive tools for job scheduling, client management, employee management, estimates, and more. The system is designed with multi-role access (Admin, Manager, Staff, and future Client portal) with robust authentication and a modular, type-safe codebase. The application features a subscription-worthy feature set justifying a $200/month price point.
 
 ---
 
-## 🛠️ Major Changes & Fixes (2024-06-09 Session)
-
-### 1. **Job Creation & Editing: Optional Fields**
-- **Frontend:**
-  - All job fields except `title` are now optional in both Jobs and Schedule pages.
-  - Add Job dialog: clear buttons for date fields, "None" options for dropdowns, helper text for all optional fields.
-  - Clicking a day in the schedule opens the Add Job dialog with that date pre-filled.
-  - Defensive coding: all form fields can be left blank except title.
-- **Backend:**
-  - API `/api/schedule` POST handler: converts empty strings to `null` for all optional fields.
-  - Date fields (`startDate`, `endDate`) are normalized to valid ISO strings and converted to JS `Date` objects before saving to Prisma.
-  - Only `title` and `createdById` are required for job creation.
-- **Prisma Schema:**
-  - `Job` model: `description`, `type`, `startDate`, `endDate`, `price`, `clientId`, `assignedToId` are all optional.
-  - Relations to `Client` and `User` are now optional.
-  - Migration created and applied.
-
-### 2. **Frontend UX & UI Consistency**
-- Add Job dialogs (Jobs & Schedule) now visually indicate optional fields.
-- Date pickers have clear buttons; dropdowns have "None" options; helper text for all optional fields.
-- Clicking a day in the schedule opens the Add Job dialog with that date pre-filled (in correct format for datetime-local input).
-- Clicking a job chip in the schedule navigates to the job details page (`/jobs/[id]`).
-- All table/list renderings use property access (e.g., `job.client?.name`), never render raw objects.
-- Address, date, and time columns in the jobs table now display correct info:
-  - Address: `job.client?.address`
-  - Date: formatted from `job.startDate`
-  - Time: formatted from `job.startDate`
-
-### 3. **Job Details Page & API Consistency**
-- Job details page fetches from `/api/schedule/[id]` (fixed from invalid route).
-- PUT requests for job updates also use `/api/schedule/[id]`.
-- All API endpoints now return consistent shapes (arrays always present, handle missing/null data defensively).
-- Defensive checks for all array accesses and API responses.
-
-### 4. **Actions Menu for Jobs**
-- Three-dot menu on each job row opens a menu with:
-  - Mark as Complete
-  - Mark as Cancelled
-- Selecting an action updates the job status via the API and refreshes the jobs list.
-- Snackbar notifications for success/failure.
-
-### 5. **Error Handling & Defensive Coding**
-- All async/await code wrapped in try/catch with user-friendly error messages.
-- Backend logs errors to the console for debugging, frontend displays clear error/snackbar messages.
-- Defensive checks for all array accesses and API responses.
-- Never render raw objects in JSX—always render a property or map to JSX.
-- TypeScript interfaces for all major data types (`Job`, `Client`, etc.) and correct usage in state.
-
-### 6. **Schedule Page Improvements**
-- Each day cell in the calendar is clickable; clicking opens Add Job dialog with that date pre-filled.
-- Job chips in the calendar are clickable and navigate to job details.
-- Add Job dialog on schedule page is now consistent with jobs page (all fields optional, clear buttons, etc.).
-
-### 7. **Prisma & Database**
-- Schema changes: made job fields optional, updated relations.
-- Migration created and applied via `npx prisma migrate dev`.
-- Defensive coding in all API routes: check for user existence, handle missing/invalid data, return clear error messages.
-
-### 8. **General Project Hygiene**
-- All API endpoints and frontend pages use consistent naming and structure (Next.js App Router conventions).
-- All code is modular and type-safe.
-- Tracker file (this file) updated with every major debugging or refactor session.
-
-### 9. **Job Notes System Enhancements (2024-06-12)**
-- **Frontend:**
-  - Added inline editing for job notes. Each note now has an edit icon; clicking it allows editing the note content inline with Save/Cancel options.
-  - Updated the `JobNotes` component to support editing, and the job details page to handle note content updates.
-- **Backend:**
-  - Updated the API route `/api/schedule/[id]/notes/[noteId]` to allow updating note content (in addition to completion status).
-  - All note operations now verify job access for the current user.
-- **UI:**
-  - Notes now display the creator's name.
-  - Improved error handling and user feedback for note actions.
-
-### 10. **Known Issues & Errors (as of 2024-06-12)**
-- **Note Editing:**
-  - Editing a note currently results in a 404 error (Failed to update note). The PUT request to `/api/schedule/[jobId]/notes/[noteId]` is not being routed correctly. Needs investigation and fix.
-- **Note Completion:**
-  - Marking a note as complete/incomplete also results in a 404 error (Failed to update note). Same routing issue as above.
-- **UI Warning:**
-  - Warning: `<div>` cannot appear as a descendant of `<p>`. This is a DOM nesting warning in the `JobNotes` component. Should refactor the component to avoid invalid HTML structure.
-
-### 11. **Next Steps & Roadmap (as of 2024-06-12)**
-- **Fix Note Update 404:**
-  - Investigate and resolve the 404 error for note update (PUT) and completion actions. Ensure the API route matches the expected path and Next.js dynamic routing conventions.
-- **Accordion/Expandable Job Details:**
-  - Implement an accordion or expandable row in the main jobs panel to show more job details (description, client info, assigned staff, dates, price, and recent notes preview).
-- **UI/UX Improvements:**
-  - Refactor `JobNotes` to resolve DOM nesting warning.
-  - Continue improving error handling and user feedback throughout the app.
-- **Documentation:**
-  - Keep this tracker updated with all new features, bug fixes, and known issues for future developers.
+## 🏗️ Architecture & Tech Stack
+- **Frontend:** Next.js 14+ (App Router, React, TypeScript), Material-UI (MUI), Framer Motion
+- **Backend:** Next.js API routes (App Router), Prisma ORM
+- **Database:** PostgreSQL (schema in `prisma/schema.prisma`)
+- **Authentication:** NextAuth.js (credentials provider, session-based)
+- **Type Safety:** TypeScript throughout, custom types for session/user
+- **Project Structure:** All code and config are inside the `/crm` folder
 
 ---
 
-## 🧑‍💻 Developer Guidance & Gotchas
-
-- **API Consistency:** Always check API responses for required fields. If you add new fields, update both backend and frontend.
-- **Never render raw objects in JSX.** Always render a property or map to JSX.
-- **Type your state!** Use TypeScript interfaces for all state variables and API responses.
-- **If you see a crash on a details page, check the API response shape first.**
-- **For MUI + Framer Motion animation, use only supported patterns.** If you need animated table rows, use a wrapper or consult the latest MUI/Framer Motion docs.
-- **Prisma:** After schema changes, always run `npx prisma migrate dev` and `npx prisma generate`.
-- **NextAuth.js:** User session is available via `useSession()` (client) or `getServerSession(authOptions)` (API routes). User roles are stored in the session and should be checked for all sensitive actions.
-- **Error Handling:** All async/await code should be wrapped in try/catch. Show user-friendly errors in the UI and log detailed errors in the backend.
-- **Keep this tracker updated** with every major debugging or refactor session for future devs.
-
----
-
-## 🛣️ Next Steps & Roadmap
-
-### 1. **User Authentication & Roles**
-- Integrate user roles (Admin, Manager, Staff, etc.) using NextAuth.js and Prisma.
-- Restrict access to jobs, clients, and actions based on user role.
-- Ensure each user only sees and manages their own jobs/clients unless they have elevated permissions.
-- Add user management UI (invite, edit, remove users).
-
-### 2. **UI/UX Enhancements**
-- Add edit/delete options to the jobs actions menu.
-- Add confirmation dialogs for destructive actions (delete, cancel).
-- Improve job details page (show more info, allow inline editing, show job history/notes).
-- Add filtering and searching for jobs and clients.
-- Add more robust integration tests for API and frontend.
-
-### 3. **API & Backend**
-- Ensure all API endpoints are robust, secure, and return consistent data shapes.
-- Add integration tests for all major API routes.
-- Continue to document all new issues and solutions in this tracker.
-
-### 4. **General Improvements**
-- Refactor any remaining legacy code to use new defensive/data-safe patterns.
-- Consider reintroducing row animation with a supported pattern if desired.
-- Continue to document all new issues and solutions in this tracker.
+## 🚀 Current Features
+- User authentication and session management
+- Role-based user model (Admin, Manager, Staff)
+- Job, client, and estimate management (CRUD)
+- Scheduling/calendar with job assignment and filtering by employee
+- Employee management (list, add, edit, delete)
+- Job notes system (CRUD, inline editing)
+- Estimates module with multi-step creation workflow
+- Materials management with categorization and bulk operations
+- Saved items system for quick estimate creation
+- Email functionality with PDF generation for estimates
+- Company branding and customization options (colors, logo, fonts)
+- Estimate templates for saving groups of commonly used items
+- Settings management with company profile and branding preferences
+- Defensive error handling and robust API validation
+- Modular, type-safe codebase
 
 ---
 
-# End of Log (2024-06-09)
+## 👥 User Roles & Permissions
+- **Admin:** Full access to all features and data (users, jobs, clients, estimates, notes)
+- **Manager:** Manage jobs, clients, view all employees, but cannot manage admin users
+- **Staff/Employee:** View/update their own jobs and notes, limited client data
+- **Client:** (Planned) Will have limited access to their own jobs and estimates
+- **Permissions are enforced in API routes** by checking `session.user.role` and `session.user.id` before DB operations
 
 ---
 
-## 📋 Project Overview
-YardBase CRM is a modern, full-featured customer relationship management system tailored for landscape businesses. It is built with:
-- **Next.js 14+ (TypeScript)** with the App Router.
-- **Material-UI (MUI)** for the UI.
-- **PostgreSQL** (via Prisma ORM) for the database.
-- **NextAuth.js** for authentication.
-- Modular structure: all code and config are inside the `/crm` folder.
+## ✅ What Works
+- Admins can manage all data
+- Employees can view their assigned jobs and notes
+- Schedule/calendar supports job assignment and filtering by employee
+- Complete estimates management system with materials catalog
+- Streamlined client creation within the estimate workflow
+- Email system for sending estimates as PDF attachments
+- All API endpoints require authentication and check user existence
+- Proper UI layout and navigation integration
+- Defensive coding and error handling throughout
+
+## 🛠️ Recent Improvements
+
+### UI/UX Enhancements
+- **Fixed Navigation Integration:** Properly integrated navigation component with all pages
+- **Layout Improvements:** Corrected spacing, padding, and margins to prevent content overlap
+- **Card Interactivity:** Added hover effects and proper click handling to estimate cards
+- **Action Button Handling:** Fixed action buttons to prevent triggering card clicks
+- **User Profile Integration:** Ensured proper spacing for user profile dropdown
+- **Empty States:** Added proper handling for empty states and loading conditions
+- **Responsive Design:** Improved mobile and desktop layouts across all interfaces
+
+### Estimate System Upgrades
+- **PDF Generation:** Implemented PDF generation for estimates
+- **Email Functionality:** Added ability to email estimates directly to clients
+- **Status Management:** Automatic status transitions when sending estimates
+- **Duplicate Function:** Ability to duplicate existing estimates
+- **Search & Filter:** Enhanced search and filtering capabilities
+
+### Branding & Customization
+- **Company Branding:** Added company profile with logo, colors, and fonts
+- **Theme Customization:** Implemented theme customization with saved preferences
+- **White-Label Options:** Configurable branding elements throughout the application
+
+### Technical Improvements
+- **DOM Validation:** Fixed DOM nesting validation errors in components
+- **Tooltip Integration:** Fixed tooltip wrapper issues with Material UI
+- **Form Data Persistence:** Implemented form data persistence during navigation
+- **API Robustness:** Enhanced error handling and validation in API endpoints
+- **Type Safety:** Improved TypeScript typing throughout the application
+
+## 🛠️ What Needs Work
+- **Role-based UI:** Separate dashboards/pages for Admin, Employee, and (future) Client
+- **Granular permissions:** Enforce permissions in all API routes (e.g., only admins can manage users, employees can only see their jobs)
+- **Client portal:** Not yet implemented
+- **Session/role propagation:** Ensure role is always present in session and available client/server-side
+- **Integration tests:** Add tests for role-based access and permissions
 
 ---
 
-## 🏁 Project Goals
-- Provide dashboard analytics, job and client management, scheduling, estimates/invoicing, and employee management.
-- Ensure robust authentication and user-specific data isolation.
-- Maintain a modern, consistent, and easily extensible codebase.
-- Document all issues, fixes, and gotchas for future developers.
+## 🛡️ Roadmap: Role-Based Access & Permissions
+1. **Define Roles & Permissions:** Finalize and document all role capabilities
+2. **API Enforcement:** Audit and update all API routes for proper role checks
+3. **Frontend UI/UX:** Refactor navigation and dashboards to show/hide features by role
+4. **Client Portal:** Plan and scaffold a limited-access UI and API for clients
+5. **Testing:** Add integration tests for permissions and role-based UI
+6. **Documentation:** Keep this tracker and dbConfg.txt updated with all changes
 
 ---
 
-## 🚀 Session Summary & Recent Fixes (Autogenerated - Review & Refine)
-
-_Date of this session: CURRENT_DATE_
-
-This session focused on resolving several critical issues to get the development environment obstáculos and API endpoints operational:
-
-1.  **Next.js App Router File Naming:**
-    *   **Issue:** Initial 404 errors for pages like `/jobs` (e.g., `crm/src/app/jobs/jobs.tsx`).
-    *   **Fix:** Renamed page files to `page.tsx` within their respective route directories (e.g., `crm/src/app/jobs/page.tsx`). This is a core convention of the Next.js App Router.
-    *   **Powershell Script:** Provided a PowerShell command to batch rename these files:
-        `Get-ChildItem -Path "src/app" -Recurse -Filter *.tsx | Where-Object { $_.Name -ne "page.tsx" -and $_.Directory.Name -eq $_.BaseName } | ForEach-Object { Rename-Item $_.FullName "page.tsx" }` (to be run from within the `/crm` directory).
-
-2.  **API Route Naming and Structure:**
-    *   **Issue:** 404 errors for API endpoints like `/api/schedule` and `/api/estimates`.
-    *   **Fix:** Ensured API route files are named `route.ts` and placed within their respective directories (e.g., `crm/src/app/api/schedule/route.ts`). Renamed files like `schedule.route.ts` and `Estimateroute.ts` accordingly.
-
-3.  **NextAuth.js `getServerSession` Usage in App Router:**
-    *   **Issue:** "Module not found" errors for `authOptions` import, followed by `TypeError: res.getHeader is not a function` and incorrect `getServerSession` argument types.
-    *   **Fixes:**
-        1.  Corrected `authOptions` import path to `@/app/api/auth/[...nextauth]/route`.
-        2.  Updated `getServerSession` import from `next-auth` to `next-auth/next`.
-        3.  Crucially, modified `getServerSession` calls in App Router API routes (`crm/src/app/api/**/route.ts`) to only pass `authOptions` (i.e., `await getServerSession(authOptions);`), removing the `request` (or `req, res`) arguments which are used in the Pages Router or different contexts.
-    *   **Type Augmentation:** Created `crm/src/types/next-auth.d.ts` to extend the `Session` interface, ensuring TypeScript recognizes custom properties like `session.user.id` and `session.user.role`. This resolved linter errors about these properties not existing on the default `User` type.
-        ```typescript
-        // crm/src/types/next-auth.d.ts
-        import NextAuth, { DefaultSession } from "next-auth";
-
-        declare module "next-auth" {
-          interface Session {
-            user?: {
-              id: string;
-              name?: string | null;
-              email?: string | null;
-              image?: string | null;
-              role?: string | null; // Ensure this matches your authOptions callback
-            }
-          }
-        }
-        ```
-    *   **`authOptions` update:** Ensured `authOptions` in `crm/src/app/api/auth/[...nextauth]/route.ts` is explicitly typed with `AuthOptions` from `next-auth` and that callbacks correctly assign `id` and `role` to `session.user`.
-
-4.  **Debugging 500 Internal Server Errors on API Routes:**
-    *   **Issue:** Persistent 500 errors even after type and NextAuth fixes.
-    *   **Troubleshooting Steps Taken:**
-        *   Emphasized checking **terminal logs** for detailed backend error messages.
-        *   Improved error handling within API routes (`schedule/route.ts`, `estimates/route.ts`) by:
-            *   Adding `console.log` statements for better traceability.
-            *   Implementing explicit database connection checks (`prisma.$queryRaw\`SELECT 1\`;`).
-            *   Verifying user existence in the database before proceeding with operations.
-            *   Checking for related entity existence (e.g., clients, assigned users) before creation to prevent foreign key constraint errors.
-            *   Handling specific Prisma errors (e.g., `P2021` for table not found, `P2003` for foreign key constraints) with more informative responses.
-    *   **Likely Remaining Causes (as of end of session):** Database connectivity (`DATABASE_URL` in `.env`), missing database/tables (requiring Prisma migrations), or data integrity issues (e.g., a user ID in a session that doesn't map to a valid user in the DB).
-
-5.  **PowerShell Command Execution:**
-    *   **Issue:** User attempting to run `cd crm && npm run dev`.
-    *   **Fix:** Clarified that PowerShell uses `;` for command chaining, not `&&`. Recommended `cd crm; npm run dev` or separate commands.
+## 🧑‍💻 Developer Onboarding Steps
+1. **Clone the repo and `cd crm`**
+2. **Install dependencies:** `npm install`
+3. **Set up `.env`** with correct `DATABASE_URL`, `NEXTAUTH_SECRET`, `NEXTAUTH_URL`
+4. **Run migrations:** `npx prisma migrate dev --name init`
+5. **Seed the database:** `npx prisma db seed` (optional)
+6. **Start the app:** `npm run dev`
+7. **Inspect the DB:** `npx prisma studio`
+8. **Review code structure:** Familiarize yourself with `/src/app`, `/prisma`, and `/components`
+9. **Check tracker.txt and dbConfg.txt** for latest project state and guidance
 
 ---
 
-## 📂 Key Files & Directories (with Roles & Pitfalls)
-
-### Configuration & Environment
-- **crm/next.config.js**: Next.js config. _Pitfalls:_ invalid/legacy options, missing rewrites, or env exposure.
-- **crm/tsconfig.json**: TypeScript config. _Pitfalls:_ module resolution, path aliases, missing `typeRoots` for custom type definitions like `next-auth.d.ts`.
-- **crm/.env**: Environment variables for Prisma and NextAuth. _Pitfalls:_ wrong/missing `DATABASE_URL`, `NEXTAUTH_SECRET`, or `NEXTAUTH_URL`. Ensure these are correctly set and the server is restarted after changes.
-- **crm/package.json**: Project dependencies and scripts. _Pitfalls:_ outdated or missing dependencies.
-
-### Prisma & Database
-- **crm/prisma/schema.prisma**: Database schema. _Pitfalls:_ enum mismatches, missing migrations, schema not in sync with the database or application code.
-- **crm/prisma/seed.ts**: Seed script for initial data.
-- **crm/prisma/migrations/**: Migration history.
-
-### Prisma Client
-- **crm/src/lib/prisma.ts**: Exports Prisma client. _Pitfalls:_ client not regenerated after schema change (`npx prisma generate`), import errors, or instantiation issues in serverless environments (though the current setup seems standard for Next.js).
-
-### API Routes (App Router Convention)
-- **crm/src/app/api/.../route.ts**: All backend logic.
-    *   **crm/src/app/api/auth/[...nextauth]/route.ts**: NextAuth.js handler. Exports `authOptions`. _Pitfalls:_ Prisma client errors within `authorize` or callbacks, missing env vars, misconfigured providers, incorrect `getServerSession` usage for App Router context.
-    *   **crm/src/app/api/auth/register/route.ts**: Registration endpoint.
-    *   **crm/src/app/api/clients/route.ts** & **crm/src/app/api/clients/[id]/route.ts**: CRUD for clients.
-    *   **crm/src/app/api/estimates/route.ts**: CRUD for estimates.
-    *   **crm/src/app/api/schedule/route.ts** & **crm/src/app/api/schedule/[id]/route.ts**: CRUD for schedules.
-    *   _General Pitfalls for API Routes:_ Incorrect `getServerSession` usage (must be `await getServerSession(authOptions)`), missing database connection checks, inadequate error handling for Prisma queries, unhandled promise rejections, incorrect Next.js `NextResponse` usage.
-
-### App Pages (App Router Convention)
-- **crm/src/app/**: Contains all frontend routes. Each route is a folder with a `page.tsx` file.
-    *   **crm/src/app/page.tsx**: Main app entry.
-    *   **crm/src/app/layout.tsx**: App shell/layout.
-    *   **crm/src/app/loading.tsx**: Loading state.
-    *   **crm/src/app/error.tsx**: Error boundary.
-#### Auth Pages
-- **crm/src/app/auth/register/page.tsx**: Registration UI.
-- **crm/src/app/auth/signin/page.tsx**: Sign-in UI.
-- **crm/src/app/login/page.tsx**: Login UI.
-#### Feature Pages
-- **crm/src/app/clients/page.tsx**: Clients dashboard.
-- **crm/src/app/jobs/page.tsx**: Jobs dashboard.
-- **crm/src/app/schedule/page.tsx**: Schedule dashboard.
-
-### UI Components
-- **crm/src/components/**: Reusable UI components.
-  _Pitfalls:_ import errors, theme/context mismatches, unhandled exceptions, incorrect MUI usage.
-
-### Styles & Theme
-- **crm/src/app/styles/theme.ts**: MUI Theme configuration.
-- **crm/src/app/styles/useThemeUpdater.tsx**: Theme update logic.
-
-### Other Core Files
-- **crm/src/app/providers.tsx**: App-wide providers (e.g., NextAuth `SessionProvider`, MUI `ThemeProvider`).
-- **crm/src/types/next-auth.d.ts**: **Crucial** for extending NextAuth's `Session` and `User` types to include custom properties like `id` and `role` for type safety throughout the application.
+## 🛠️ Troubleshooting Tips
+- **Prisma errors:** Check for missing relations, enum mismatches, or invalid data
+- **Connection errors:** Check `DATABASE_URL` and ensure PostgreSQL is running
+- **Session errors:** Ensure NextAuth.js is configured and sessions are valid
+- **API errors:** Check terminal logs for backend errors and browser console for frontend issues
+- **After schema changes:** Run migrations and regenerate Prisma client
+- **Restart dev server** after changes to `.env`, `next.config.js`, or Prisma schema
+- **UI Layout Issues:** Check component nesting, z-index values, and padding/margin properties
 
 ---
 
-## 🛠️ Common Issues & Troubleshooting (Expanded)
+## 🧰 Estimates Module Implementation Details
 
-### Prisma Client Not Initialized / Out of Sync
-- **Error:** `@prisma/client did not initialize yet...` or type errors related to Prisma models.
-- **Fix:**
-  1.  Run `npx prisma generate --schema=prisma/schema.prisma` (always ensure you are in the `/crm` directory).
-  2.  If schema changed: `npx prisma db push --schema=prisma/schema.prisma` (for development, review `prisma migrate dev` for production workflows).
-  3.  **Aggressive Cleanup (if needed):**
-      *   Delete `/crm/.next`
-      *   Delete `/crm/node_modules/.prisma`
-      *   Delete `/crm/node_modules/@prisma`
-      *   Run `npm install` (within `/crm`)
-      *   Run `npx prisma generate --schema=prisma/schema.prisma`
-      *   Restart dev server.
+### 1. Estimates Overview
+The estimates module provides a comprehensive solution for creating, managing, and tracking project estimates. Key features include:
 
-### NextAuth.js & Session Issues
-- **Error:** 500 errors on `/api/auth/session`, `/api/auth/_log`, or API routes failing authentication checks. `TypeError: res.getHeader is not a function`.
-- **Causes & Fixes:**
-    1.  **Prisma Client:** See above. NextAuth's `authorize` function or callbacks often use Prisma.
-    2.  **Environment Variables:** Ensure `DATABASE_URL`, `NEXTAUTH_SECRET`, `NEXTAUTH_URL` are correct in `/crm/.env`. Restart server after changes.
-    3.  **`getServerSession` Usage (App Router Critical Pitfall):**
-        *   In App Router API routes (`/crm/src/app/api/**/route.ts`), use `import { getServerSession } from 'next-auth/next';` and call `const session = await getServerSession(authOptions);` (passing only `authOptions`).
-        *   Do NOT pass `req, res` or `request` to `getServerSession` in this context.
-    4.  **Type Augmentation:** Ensure `crm/src/types/next-auth.d.ts` is correctly set up to reflect any custom properties (like `id`, `role`) added to the `session.user` object in `authOptions` callbacks.
-    5.  **`authOptions` Callbacks:** Double-check logic in `session` and `jwt` callbacks in `crm/src/app/api/auth/[...nextauth]/route.ts`. Ensure `id` and `role` are correctly assigned to `session.user`.
+- **Estimate Listing:** View all estimates with filtering and search capabilities
+- **Multi-step Estimate Creation:** Guided workflow for creating detailed estimates
+- **Line Item Management:** Add, edit, and remove line items with automatic total calculation
+- **Materials Management:** Categorized materials catalog with bulk operations
+- **Client Creation:** Create new clients directly within the estimate workflow
+- **Saved Items:** Store and reuse common materials and services
+- **Duplicate Function:** Clone existing estimates for similar projects
+- **Status Tracking:** Track estimate status (Draft, Sent, Accepted, Rejected, Expired)
+- **PDF Generation:** Create professional PDFs of estimates
+- **Email Integration:** Send estimates directly to clients with PDF attachments
 
-### Database Connectivity & Operations
-- **Error:** API routes return 500, terminal logs show "database connection error," "table not found" (Prisma error `P2021`), or foreign key constraint violations (`P2003`).
-- **Fixes:**
-    1.  **Database Service:** Ensure PostgreSQL (or your configured DB) is running and accessible.
-    2.  **`.env` Configuration:** Verify `DATABASE_URL` in `/crm/.env` is correct.
-    3.  **Migrations:** Run `npx prisma migrate dev --schema=prisma/schema.prisma` (from `/crm`) to create/update tables. For existing databases or more control, use `prisma migrate deploy`.
-    4.  **API Route Logic:** Implement checks for database connection, user existence, and related entity existence before performing operations, as demonstrated in the improved `schedule/route.ts` and `estimates/route.ts`.
-    5.  **Seed Data:** If tables are empty, consider running `npx prisma db seed --schema=prisma/schema.prisma` if a seed script is configured.
+### 2. Database Models
 
-### Environment Variables
-- **Pitfall:** Wrong/missing `DATABASE_URL`, `NEXTAUTH_SECRET`, or `NEXTAUTH_URL` in `/crm/.env`.
-- **Fix:** Ensure all are present and correct. Restart dev server after any changes to `.env`.
+#### Estimate Model
+```prisma
+model Estimate {
+  id          String         @id @default(cuid())
+  title       String
+  description String
+  status      EstimateStatus @default(DRAFT)
+  price       Float
+  validUntil  DateTime
+  clientId    String
+  createdById String
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  client      Client         @relation(fields: [clientId], references: [id])
+  createdBy   User           @relation("CreatedEstimates", fields: [createdById], references: [id])
+  jobs        Job[]
+  lineItems   LineItem[]
+}
+```
 
-### Schema/Enum Mismatches
-- **Pitfall:** Using a value in code (e.g., for `JobType`) not present as an enum variant in `schema.prisma`.
-- **Fix:** Update `schema.prisma`, run `npx prisma generate` and `npx prisma db push` (or `migrate dev`).
+#### LineItem Model
+```prisma
+model LineItem {
+  id          String   @id @default(cuid())
+  description String
+  quantity    Int
+  unitPrice   Float
+  total       Float
+  estimateId  String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  estimate    Estimate @relation(fields: [estimateId], references: [id])
+}
+```
 
-### Dependency Issues
-- **Pitfall:** Outdated or missing packages, especially `@prisma/client`, `prisma`, `next-auth`.
-- **Fix:** Run `npm install` from `/crm`. Keep dependencies reasonably up to date.
+#### SavedItem Model
+```prisma
+model SavedItem {
+  id          String   @id @default(cuid())
+  description String
+  unitPrice   Float
+  quantity    Int      @default(1)
+  category    String?  @default("Other")
+  userId      String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  user        User     @relation("UserSavedItems", fields: [userId], references: [id])
+  templateItems TemplateItem[]
+}
+```
 
-### Windows/PowerShell Command Differences
-- **Pitfall:** Unix commands like `rm -rf` or `cd dir && command` don't work as expected.
-- **Fix:**
-    *   For deletion: `Remove-Item -Recurse -Force <folder>`
-    *   For command chaining: `cd dir; command` (using semicolon).
+#### EstimateTemplate Model
+```prisma
+model EstimateTemplate {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  userId      String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  user        User     @relation("UserEstimateTemplates", fields: [userId], references: [id])
+  items       TemplateItem[]
+}
+```
 
-### Multiple `.env` Files
-- **Pitfall:** Only `/crm/.env` is used by the Next.js app within the `/crm` directory. A `.env` file in the workspace root will likely be ignored.
+#### UserSettings Model
+```prisma
+model UserSettings {
+  id                 String   @id @default(cuid())
+  userId             String   @unique
+  companyName        String?
+  companyLogo        String?
+  primaryColor       String?
+  secondaryColor     String?
+  accentColor        String?
+  fontPrimary        String?
+  fontSecondary      String?
+  addressLine1       String?
+  addressLine2       String?
+  city               String?
+  state              String?
+  zipCode            String?
+  phoneNumber        String?
+  emailAddress       String?
+  website            String?
+  taxRate            Float?   @default(0)
+  defaultEstimateTerms String? @db.Text
+  emailSignature     String? @db.Text
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  user               User     @relation(fields: [userId], references: [id])
+}
+```
 
-### Not Restarting Dev Server
-- **Pitfall:** Changes to `.env`, `next.config.js`, `tsconfig.json`, `prisma.schema` (requiring generation/migration), or critical `node_modules` often require a full dev server restart (`npm run dev` from `/crm`).
+### 3. Materials Management System
 
----
+The materials management system provides a dedicated interface for managing commonly used materials:
 
-## 🚀 Continuity Guide for the Next Developer
+- **Located at `/estimates/materials`**
+- **Features:**
+  - Categorized materials organization (Landscaping, Garden, Hardscape, Tools, Equipment, etc.)
+  - Category-based filtering and search functionality
+  - Individual material creation with detailed attributes
+  - Bulk materials import for efficient setup
+  - Default quantity settings for each material
+  - Integration with estimate creation workflow
+  - Custom category management
 
-This guide provides an overview of the system architecture and a recommended workflow to ensure smooth development and troubleshooting.
+- **Workflow:**
+  1. Users can create materials individually with description, price, and category
+  2. Bulk import allows adding multiple materials at once via CSV-like format
+  3. Materials are categorized for easy filtering and organization
+  4. During estimate creation, users can browse the materials catalog
+  5. Users can add materials directly to estimates with predefined pricing
 
-### 1. System Architecture Overview
+### 4. Estimate Creation Workflow
 
-*   **Framework:** Next.js 14+ utilizing the App Router. All frontend pages are directories within `crm/src/app/` containing a `page.tsx` file. API routes are directories within `crm/src/app/api/` containing a `route.ts` file.
-*   **UI:** Material-UI (MUI) is used for components and styling, configured via `crm/src/app/styles/theme.ts`.
-*   **Database:** PostgreSQL, interacted with via Prisma ORM.
-    *   Schema is defined in `crm/prisma/schema.prisma`.
-    *   The Prisma client instance is exported from `crm/src/lib/prisma.ts`.
-*   **Authentication:** NextAuth.js handles authentication.
-    *   Core configuration (`authOptions`) is in `crm/src/app/api/auth/[...nextauth]/route.ts`. This file defines providers (currently Credentials), session strategy (JWT), and callbacks to customize session and JWT content.
-    *   Client-side session access is typically through the `useSession()` hook from `next-auth/react` (within `<SessionProvider>`).
-    *   Server-side (API routes, Server Components) session access is via `await getServerSession(authOptions)` imported from `next-auth/next`.
-*   **Type Safety:** TypeScript is used throughout.
-    *   `crm/src/types/next-auth.d.ts` is critical for augmenting NextAuth's default `Session` and `User` types to include custom fields (e.g., `id`, `role`) populated in the `authOptions` callbacks. This ensures these fields are type-safe across the application.
-*   **Project Structure:** The entire application is self-contained within the `/crm` directory. All commands (npm scripts, prisma commands) should generally be run from this directory.
+The estimate creation process uses a multi-step wizard approach:
 
-### 2. Ideal Development Workflow
+#### Step 1: Client Selection
+- **Select existing client from dropdown**
+- **Create new client directly in the workflow:**
+  - Complete client form with validation
+  - Client information is saved and linked to the estimate
+  - New client is automatically selected for the current estimate
 
-**A. Initial Setup & Sanity Checks:**
+#### Step 2: Estimate Details
+- **Enter estimate title and description**
+- **Set validity period for the estimate**
+- **Input any special terms or conditions**
 
-1.  **Navigate to CRM Directory:** Open your terminal and `cd crm`. **All subsequent commands assume you are in this directory.**
-2.  **Environment Variables:** Copy `.env.example` to `.env (if it exists) or create `/crm/.env`. Ensure the following are correctly set:
-    *   `DATABASE_URL`: Your PostgreSQL connection string (e.g., `postgresql://USER:PASSWORD@HOST:PORT/DATABASE`).
-    *   `NEXTAUTH_SECRET`: A strong secret string (generate one using `openssl rand -base64 32`).
-    *   `NEXTAUTH_URL`: `http://localhost:3000` for local development.
-3.  **Database Service:** Ensure your PostgreSQL server is running and accessible with the credentials in `DATABASE_URL`.
-4.  **Install Dependencies:** Run `npm install`.
-5.  **Prisma Setup:**
-    *   **Generate Client:** `npx prisma generate --schema=prisma/schema.prisma`. This creates/updates the Prisma client in `node_modules/.prisma/client`.
-    *   **Database Migrations:** `npx prisma migrate dev --schema=prisma/schema.prisma`. This will create the database if it doesn't exist and apply all migrations. (Alternatively, for an existing DB or simpler sync in dev: `npx prisma db push --schema=prisma/schema.prisma`).
-6.  **Start Dev Server:** `npm run dev`.
-7.  **Initial Test:** Open `http://localhost:3000` in your browser. Try logging in or registering. Check the browser console and terminal (running `npm run dev`) for any errors.
+#### Step 3: Line Items
+- **Add line items manually:**
+  - Description
+  - Quantity
+  - Unit price
+  - Automatic total calculation
+- **Add items from saved materials catalog:**
+  - Browse categorized materials
+  - Search for specific materials
+  - Add with predefined pricing and quantities
+- **Add items from estimate templates:**
+  - Save time by using predefined groups of items
+  - Customize quantities as needed
+- **Direct access to materials management**
 
-**B. Making Schema Changes (Prisma):**
+#### Step 4: Review & Create
+- **Review all estimate details:**
+  - Client information
+  - Estimate details
+  - Line items list with quantities and pricing
+  - Total price calculation
+- **Create the estimate and save to the database**
 
-1.  **Edit Schema:** Modify `crm/prisma/schema.prisma` (e.g., add models, fields, relations, enums).
-2.  **Create Migration:** `npx prisma migrate dev --name your-descriptive-migration-name --schema=prisma/schema.prisma`. This creates a new SQL migration file in `crm/prisma/migrations/` and applies it to your development database.
-3.  **Generate Prisma Client:** `npx prisma generate --schema=prisma/schema.prisma` to update the client with new types and methods.
-4.  **Restart Dev Server:** Stop and restart `npm run dev` for Next.js to pick up changes related to the Prisma client types if they are used in server-side code.
-5.  **Update Application Code:** Modify your API routes and components to use the new schema elements.
+### 5. Email & PDF Generation
 
-**C. Developing API Routes (`crm/src/app/api/.../route.ts`):**
+The estimate email system allows users to send professional estimates directly to clients:
 
-1.  **Authentication:**
-    *   Import `getServerSession` from `next-auth/next`.
-    *   Import `authOptions` from `../../auth/[...nextauth]/route`.
-    *   Get session: `const session = await getServerSession(authOptions);`.
-    *   Perform checks: `if (!session || !session.user || !session.user.id) { return NextResponse.json({ error: 'Unauthorized' }, { status: 401 }); }`.
-2.  **Database Interaction:**
-    *   Import `prisma` from ` '@/lib/prisma'`.
-    *   Wrap Prisma calls in `try...catch` blocks.
-    *   **Implement explicit checks:**
-        *   Database connection: `await prisma.$queryRaw\`SELECT 1\`;` at the beginning of handlers.
-        *   User existence: `await prisma.user.findUnique({ where: { id: session.user.id } });`.
-        *   Related entity existence (e.g., for foreign keys) before create/update operations.
-    *   Handle known Prisma errors (e.g., `PrismaClientKnownRequestError`) to return specific error messages.
-3.  **Input Validation:** Validate request body and query parameters.
-4.  **Response:** Use `NextResponse.json()` to return data or errors with appropriate status codes.
-5.  **Logging:** Add `console.log` statements to trace execution flow and variable states during development.
+- **Email Interface:**
+  - Accessible from estimate listing or detail view
+  - Pre-filled recipient (client email), subject, and message
+  - Option to send copy to sender
+  - Professional formatting with company branding
 
-**D. Developing Frontend Pages & Components (`crm/src/app/.../page.tsx`, `crm/src/components/`):**
+- **PDF Generation:**
+  - Creates professional PDF with company branding
+  - Includes all estimate details and line items
+  - Formats pricing information clearly
+  - Includes terms and conditions
+  - Shows company contact information
 
-1.  **Session Access (Client-Side):**
-    *   Use the `useSession()` hook from `next-auth/react`.
-    *   Ensure the page/component is wrapped in `<SessionProvider>` (likely in `crm/src/app/providers.tsx`).
-2.  **Data Fetching:**
-    *   Typically `fetch` data from your API routes within `useEffect` hooks or using a data-fetching library like SWR/React Query if desired.
-    *   Handle loading and error states.
-3.  **UI:** Utilize MUI components. Refer to MUI documentation for usage and props.
-4.  **State Management:** Use React's `useState`, `useReducer`, or `useContext` as needed.
+- **Status Management:**
+  - Automatically updates estimate status from DRAFT to SENT when emailed
+  - Tracks when emails are sent
+  - Allows re-sending of estimates with notification
 
-**E. Modifying Authentication (`crm/src/app/api/auth/[...nextauth]/route.ts`):**
+### 6. UI Components and Layout Improvements
 
-1.  **`authOptions`:** This is the central configuration object.
-    *   **Providers:** Add/modify authentication providers (e.g., OAuth providers).
-    *   **Callbacks (`session`, `jwt`):** Customize the session object or JWT.
-        *   If you add custom fields to `session.user` (e.g., `id`, `role`), ensure they are correctly populated from the `token` (in `session` callback) or `user` object (in `jwt` callback).
-        *   **Crucially, update `crm/src/types/next-auth.d.ts`** to reflect these changes for type safety.
-2.  **Database Interaction:** The `authorize` function (for Credentials provider) and callbacks may interact with Prisma. Ensure these interactions are robust and handle errors.
-3.  **Restart Dev Server:** Changes to `authOptions` require a server restart.
+Recent UI enhancements to the estimates module include:
 
-**F. Debugging Strategy:**
+- **Estimates Page Layout:**
+  - Proper integration with Navigation component
+  - Fixed padding and margins to prevent content overlap
+  - Proper spacing for user profile dropdown
+  - Responsive design for mobile and desktop
 
-1.  **Terminal First:** For any backend issues, especially 500 errors or API failures, **always check the terminal where `npm run dev` is running.** This is where Next.js and Prisma will output detailed error messages and stack traces. The browser console will often only show a generic error.
-2.  **Browser DevTools:**
-    *   **Console:** For client-side JavaScript errors and `console.log` outputs from frontend code.
-    *   **Network Tab:** Inspect API requests and responses. Check status codes, request payloads, and response bodies. This is invaluable for diagnosing why an API call might be failing or returning unexpected data.
-3.  **Prisma Studio (Optional):** Run `npx prisma studio --schema=prisma/schema.prisma` to visually inspect and interact with your database.
-4.  **Step-Through with `console.log`:** Add logs at various points in your API route handlers or component lifecycle methods to understand the flow and state of variables.
-5.  **Isolate the Problem:** If an API route is failing, try simplifying it. Comment out parts of the logic (e.g., database queries, complex transformations) to see if a more basic version works. This helps pinpoint the problematic code section.
-6.  **Check Environment:** Ensure `.env` variables are loaded correctly and the database is accessible.
-7.  **Restart:** When in doubt after significant changes (config, Prisma, `node_modules`), restart the dev server.
+- **Estimate Cards:**
+  - Enhanced interactivity with hover effects
+  - Fixed action buttons to prevent triggering card clicks
+  - Clear status indicators with appropriate colors
+  - Improved spacing and typography
 
-**G. Maintaining This Tracker:**
+- **Search and Filtering:**
+  - Improved search functionality by title or client
+  - Clear empty states with helpful messages
+  - Loading indicators during data fetching
 
-*   Before starting significant new work, review this tracker for relevant history.
-*   If you encounter new, non-trivial issues, document the problem, steps to reproduce, and the solution here.
-*   If you refine the workflow or discover better practices, update the relevant sections.
+- **Action Buttons:**
+  - Tooltip-enabled action buttons for common operations
+  - Email, edit, duplicate, and delete functions
+  - Proper event propagation handling
 
----
+### 7. API Architecture
 
-## 📝 For the Next Developer (Original Section - Kept for Posterity, Superseded by Guide Above)
-- Read this log first!
-- Always work inside `/crm`.
-- If you get stuck, check the terminal for the real error message.
-- Keep this tracker updated with any new issues, fixes, or changes to the workflow.
+The estimates module uses several API endpoints:
 
----
+- `/api/estimates` - List, create, and filter estimates
+- `/api/estimates/[id]` - Get, update, and delete specific estimates
+- `/api/estimates/[id]/duplicate` - Clone existing estimates
+- `/api/estimates/[id]/email` - Email estimates to clients
+- `/api/saved-items` - Manage saved materials and line items
+- `/api/saved-items/[id]` - Manage individual saved items
+- `/api/estimate-templates` - Manage reusable estimate templates
+- `/api/settings` - Manage user and company settings for branding
 
-## 📝 Session Continuation (2024-06-13)
+### 8. Future Enhancements
 
-### What We Did (Extremely Detailed)
+Planned enhancements for the estimates module:
 
-#### 1. **Database (Prisma) Structure & Changes**
-- **Job Model:**
-  - All fields except `title` are now optional (`description`, `type`, `startDate`, `endDate`, `price`, `clientId`, `assignedToId`).
-  - Relations: Each job can have many notes, is linked to a client (optional), assigned user (optional), and creator (required).
-- **Note Model:**
-  - Each note is linked to a job and a user (creator).
-  - Cascade delete: Deleting a job deletes its notes automatically.
-  - Fields: `content`, `completed`, `createdAt`, `completedAt`, `jobId`, `createdById`.
-- **Migrations:**
-  - Ran and applied migrations to reflect these schema changes.
-
-#### 2. **API Layer (Next.js App Router)**
-- **Job Endpoints:**
-  - `/api/schedule` and `/api/schedule/[id]` for job CRUD.
-- **Notes Endpoints:**
-  - `/api/schedule/[id]/notes` (GET/POST): List and create notes for a job.
-  - `/api/schedule/[id]/notes/[noteId]` (PUT/DELETE): Update or delete a specific note.
-  - All endpoints require authentication and check that the user is the job creator or assignee.
-  - All note endpoints include the creator's name in responses for UI display.
-- **Error Handling:**
-  - Robust error handling and clear error messages for all API routes.
-
-#### 3. **Frontend (React + MUI)**
-- **Job Details Page (`/jobs/[id]/page.tsx`):**
-  - Fetches job details and notes on mount.
-  - Maintains local state for job and notes.
-  - Handles all note operations (add, edit, complete, delete) via API calls.
-  - Updates local notes state immediately after any operation for instant UI feedback.
-- **JobNotes Component:**
-  - Refactored to be a controlled component (receives `notes` as a prop, no local notes state).
-  - Renders pending and completed notes, with inline editing and completion toggling.
-  - Calls parent handlers for all note actions.
-  - UI updates instantly after any note operation (no refresh needed).
-- **UI/UX Improvements:**
-  - Fixed DOM warning by ensuring no `<div>` inside `<p>` (used `component="div"` for Typography).
-  - Improved error handling and user feedback (snackbars).
-
-#### 4. **Security & Data Integrity**
-- All API endpoints require authentication via NextAuth.js session.
-- All note and job operations check that the user is authorized (creator or assignee).
-- Prisma enforces referential integrity and cascade deletes at the database level.
-
-#### 5. **How Everything Connects**
-- User logs in (NextAuth.js, session available everywhere).
-- Job details page fetches job and notes from API.
-- Notes are displayed via `JobNotes`, which receives the current notes array.
-- User adds/edits/completes/deletes a note:
-  - Triggers an API call.
-  - On success, parent updates the notes state, which is reflected instantly in the UI.
-- Database enforces all relations and cascades deletes as needed.
-
-#### 6. **What's Working Now**
-- Jobs and notes are fully CRUD-capable.
-- Notes update instantly in the UI after any action.
-- All API routes are RESTful and secure.
-- Database schema is robust and matches the app's needs.
-
-#### 7. **What's Next / How to Connect More Parts**
-- Link jobs to clients and users in the UI (e.g., show client info, allow assignment).
-- Add filtering/searching for jobs and notes.
-- Implement user roles and permissions for more granular access control.
-- Expand the notes system (e.g., file attachments, comments, etc.) if needed.
-- Integrate notifications or activity logs for job/note changes.
-- Write integration tests for API and UI.
-
-#### 8. **Summary Table**
-
-| Layer      | What's Done/Working                                 | What's Next/To Connect                |
-|------------|-----------------------------------------------------|---------------------------------------|
-| Database   | Schema, relations, cascade delete, migrations       | More advanced relations, auditing     |
-| API        | RESTful, secure, robust error handling              | More endpoints, role-based access     |
-| Frontend   | Controlled notes, instant UI updates, error handling| Filtering, searching, richer UI       |
+- **Client Portal:** Allow clients to view and approve estimates online
+- **Advanced Templates:** More powerful templating with sections and categories
+- **Pricing Rules:** Dynamic pricing based on client type, project size, etc.
+- **Historical Analytics:** Track estimate conversion rates and profitability
+- **Integration with external accounting systems**
+- **Digital Signature Support:** Allow clients to digitally sign and approve
 
 ---
 
-**This tracker entry is a comprehensive handoff and onboarding reference for the next developer. Review this before making further changes or connecting new features.**
+## 🛣️ Long-Term Roadmap
+- Full client portal implementation
+- Advanced analytics and reporting
+- Enhanced notifications system with email and SMS options
+- Calendar integration with external services (Google, Outlook)
+- Mobile application for field workers
+- Offline capabilities for remote work areas
+- More granular permissions (e.g., per-client, per-job)
+- Integration with external services (payment processors, accounting)
+- Automated testing and CI/CD
 
 ---
+
+# End of Log (2024-06-15)

@@ -1,215 +1,1066 @@
-# YardBase CRM - System Architecture & File Relationships
+# YardBase CRM - Comprehensive System Documentation
 
-## Core Architecture Overview
+## 1. System Architecture Overview
 
-The YardBase CRM is built using Next.js 14+ with the App Router pattern, utilizing TypeScript, Material-UI, PostgreSQL (via Prisma), and NextAuth.js. The entire application is contained within the `/crm` directory.
+YardBase CRM is a comprehensive customer relationship management system built specifically for landscaping and yard service businesses. The application is constructed using:
 
-## Directory Structure & File Relationships
+- **Frontend**: Next.js 14+ (App Router), Material-UI, Framer Motion
+- **Backend**: Next.js API Routes, NextAuth.js
+- **Database**: PostgreSQL with Prisma ORM
+- **Authentication**: NextAuth.js with JWT strategy
+- **Styling**: Material-UI with custom theming system
 
-### 1. Root Configuration Files
-- **next.config.js**: Next.js configuration
-- **tsconfig.json**: TypeScript configuration
-- **package.json**: Project dependencies and scripts
-- **.env**: Environment variables (DATABASE_URL, NEXTAUTH_SECRET, NEXTAUTH_URL)
-- **prisma/schema.prisma**: Database schema definition
-
-### 2. Source Code Organization (/src)
-
-#### A. App Directory (/src/app)
-The app directory follows Next.js App Router conventions:
-
-1. **Root Layout & Pages**
-   - **layout.tsx**: Root layout component, wraps all pages
-   - **page.tsx**: Home page component
-   - **loading.tsx**: Loading state component
-   - **error.tsx**: Error boundary component
-   - **providers.tsx**: App-wide providers (SessionProvider, ThemeProvider)
-
-2. **Authentication**
-   - **/auth/signin/page.tsx**: Sign-in page
-   - **/auth/register/page.tsx**: Registration page
-   - **/login/page.tsx**: Login page
-
-3. **Feature Pages**
-   - **/clients/page.tsx**: Clients dashboard
-   - **/clients/[id]/page.tsx**: Individual client details
-   - **/jobs/page.tsx**: Jobs dashboard
-   - **/jobs/[id]/page.tsx**: Individual job details
-   - **/schedule/page.tsx**: Schedule dashboard
-   - **/schedule/[id]/page.tsx**: Individual schedule details
-
-4. **API Routes**
-   - **/api/auth/[...nextauth]/route.ts**: NextAuth.js handler
-   - **/api/auth/register/route.ts**: Registration endpoint
-   - **/api/clients/route.ts**: Client CRUD operations
-   - **/api/clients/[id]/route.ts**: Individual client operations
-   - **/api/estimates/route.ts**: Estimate CRUD operations
-   - **/api/schedule/route.ts**: Schedule CRUD operations
-   - **/api/schedule/[id]/route.ts**: Individual schedule operations
-
-5. **Styles & Theme**
-   - **/styles/theme.ts**: MUI theme configuration
-   - **/styles/useThemeUpdater.tsx**: Theme update logic
-
-#### B. Components Directory (/src/components)
-Reusable UI components:
-- **Layout.tsx**: Main layout wrapper
-- **Navigation.tsx**: Navigation component
-- **DashboardCard.tsx**: Dashboard card component
-- **ErrorBoundary.tsx**: Error boundary component
-- **ThemeDebugger.tsx**: Theme debugging component
-- **ThemeDebuggerModal.tsx**: Theme debugger modal
-- **ThemeColorPalette.tsx**: Theme color palette component
-- **ColorSaveManager.tsx**: Color save management component
-
-#### C. Library & Types
-- **/lib/prisma.ts**: Prisma client instance
-- **/types/next-auth.d.ts**: NextAuth type definitions
-
-## Data Flow & Component Relationships
-
-### 1. Authentication Flow
-1. User visits `/login` or `/auth/signin`
-2. NextAuth.js handles authentication via `/api/auth/[...nextauth]/route.ts`
-3. Session is managed by `SessionProvider` in `providers.tsx`
-4. Protected routes check session via `getServerSession(authOptions)`
-
-### 2. Client Management Flow
-1. User accesses `/clients` page
-2. Page component fetches data from `/api/clients/route.ts`
-3. Data is displayed using MUI components
-4. Individual client details accessed via `/clients/[id]`
-5. Client operations handled by `/api/clients/[id]/route.ts`
-
-### 3. Job Management Flow
-1. User accesses `/jobs` page
-2. Page component fetches data from `/api/jobs/route.ts`
-3. Jobs are displayed using MUI components
-4. Individual job details accessed via `/jobs/[id]`
-5. Job operations handled by `/api/jobs/[id]/route.ts`
-
-### 4. Schedule Management Flow
-1. User accesses `/schedule` page
-2. Page component fetches data from `/api/schedule/route.ts`
-3. Schedule is displayed using MUI components
-4. Individual schedule details accessed via `/schedule/[id]`
-5. Schedule operations handled by `/api/schedule/[id]/route.ts`
-
-## Database Schema Relationships
+## 2. Database Schema & Relationships
 
 ### Core Models
-1. **User**
-   - Related to: Jobs (assignedTo, createdBy), Estimates (createdBy)
-   - Fields: id, email, name, password, role
 
-2. **Client**
-   - Related to: Jobs, Estimates
-   - Fields: id, name, email, phone, address, city, state, zipCode
+#### User Model
+```
+model User {
+  id              String     @id @default(cuid())
+  email           String     @unique
+  name            String
+  password        String
+  role            UserRole   @default(STAFF)
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+  assignedJobs    Job[]      @relation("AssignedTo")
+  createdJobs     Job[]      @relation("CreatedBy")
+  createdEstimates Estimate[] @relation("CreatedEstimates")
+  notes           Note[]     @relation("CreatedNotes")
+}
+```
 
-3. **Job**
-   - Related to: User (assignedTo, createdBy), Client, Estimate
-   - Fields: id, title, description, status, type, startDate, endDate, price
+#### Client Model
+```
+model Client {
+  id        String     @id @default(cuid())
+  name      String
+  email     String     @unique
+  phone     String
+  address   String
+  city      String
+  state     String
+  zipCode   String
+  notes     String?
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  estimates Estimate[]
+  jobs      Job[]
+}
+```
 
-4. **Estimate**
-   - Related to: Client, User (createdBy), Jobs
-   - Fields: id, title, description, status, price, validUntil
+#### Job Model
+```
+model Job {
+  id           String    @id @default(cuid())
+  title        String
+  description  String?
+  status       JobStatus @default(PENDING)
+  type         JobType?
+  startDate    DateTime?
+  endDate      DateTime?
+  price        Float?
+  clientId     String?
+  assignedToId String?
+  createdById  String
+  estimateId   String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  assignedTo   User?     @relation("AssignedTo", fields: [assignedToId], references: [id])
+  client       Client?   @relation(fields: [clientId], references: [id])
+  createdBy    User      @relation("CreatedBy", fields: [createdById], references: [id])
+  estimate     Estimate? @relation(fields: [estimateId], references: [id])
+  notes        Note[]
+}
+```
 
-5. **LineItem**
-   - Related to: Estimate
-   - Fields: id, description, quantity, unitPrice, total
+#### Estimate Model
+```
+model Estimate {
+  id          String         @id @default(cuid())
+  title       String
+  description String
+  status      EstimateStatus @default(DRAFT)
+  price       Float
+  validUntil  DateTime
+  clientId    String
+  createdById String
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  client      Client         @relation(fields: [clientId], references: [id])
+  createdBy   User           @relation("CreatedEstimates", fields: [createdById], references: [id])
+  jobs        Job[]
+  lineItems   LineItem[]
+}
+```
 
-6. **Note**
-   - Related to: Job
-   - Fields: id, content, jobId
+#### LineItem Model
+```
+model LineItem {
+  id          String   @id @default(cuid())
+  description String
+  quantity    Int
+  unitPrice   Float
+  total       Float
+  estimateId  String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  estimate    Estimate @relation(fields: [estimateId], references: [id])
+}
+```
 
-## Theme & Styling System
+#### Note Model
+```
+model Note {
+  id          String   @id @default(cuid())
+  content     String
+  completed   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  completedAt DateTime?
+  job         Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  jobId       String
+  createdBy   User     @relation("CreatedNotes", fields: [createdById], references: [id])
+  createdById String
+}
+```
 
-1. **Theme Configuration**
-   - Defined in `/src/app/styles/theme.ts`
-   - Used by MUI's ThemeProvider in `providers.tsx`
-   - Can be debugged using ThemeDebugger components
+### Enums
 
-2. **Theme Updates**
-   - Managed by `useThemeUpdater.tsx`
-   - Changes persisted by `ColorSaveManager.tsx`
+#### UserRole Enum
+```
+enum UserRole {
+  ADMIN
+  MANAGER
+  STAFF
+}
+```
 
-## Error Handling & Loading States
+#### JobStatus Enum
+```
+enum JobStatus {
+  PENDING
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+```
 
-1. **Error Boundaries**
-   - Global error handling via `error.tsx`
-   - Component-level error handling via `ErrorBoundary.tsx`
+#### JobType Enum
+```
+enum JobType {
+  LAWN_MAINTENANCE
+  LANDSCAPE_DESIGN
+  TREE_SERVICE
+  IRRIGATION
+  HARDSCAPING
+  CLEANUP
+  PLANTING
+  FERTILIZATION
+}
+```
 
-2. **Loading States**
-   - Global loading state via `loading.tsx`
-   - Component-level loading states in individual pages
+#### EstimateStatus Enum
+```
+enum EstimateStatus {
+  DRAFT
+  SENT
+  ACCEPTED
+  REJECTED
+  EXPIRED
+}
+```
 
-## Security & Authentication
+### Database Entity Relationships
 
-1. **NextAuth.js Integration**
-   - Configuration in `/api/auth/[...nextauth]/route.ts`
-   - Session management via `SessionProvider`
-   - Type safety via `next-auth.d.ts`
+1. **User to Job**: One-to-many relationships:
+   - One user can be assigned to many jobs (assignedJobs)
+   - One user can create many jobs (createdJobs)
 
-2. **API Route Protection**
-   - All API routes check session via `getServerSession(authOptions)`
-   - Role-based access control via `session.user.role`
+2. **User to Estimate**: One-to-many relationship:
+   - One user can create many estimates
 
-## Development Workflow
+3. **Client to Job**: One-to-many relationship:
+   - One client can have many jobs
 
-1. **Database Changes**
-   - Modify `schema.prisma`
-   - Run `prisma generate` and `prisma migrate dev`
-   - Update API routes and components accordingly
+4. **Client to Estimate**: One-to-many relationship:
+   - One client can have many estimates
 
-2. **API Development**
-   - Create/modify route handlers in `/api` directory
-   - Implement proper error handling and session checks
-   - Test with appropriate HTTP methods
+5. **Estimate to Job**: One-to-many relationship:
+   - One estimate can be associated with many jobs
 
-3. **Frontend Development**
-   - Create/modify pages in `/app` directory
-   - Use MUI components for consistent styling
-   - Implement proper loading and error states
+6. **Estimate to LineItem**: One-to-many relationship:
+   - One estimate can have many line items
 
-4. **Component Development**
-   - Create reusable components in `/components` directory
-   - Follow MUI patterns and best practices
-   - Implement proper TypeScript types
+7. **Job to Note**: One-to-many relationship:
+   - One job can have many notes
 
-## Common Patterns & Best Practices
+8. **User to Note**: One-to-many relationship:
+   - One user can create many notes
 
-1. **API Route Pattern**
-   ```typescript
-   export async function GET(request: Request) {
-     const session = await getServerSession(authOptions);
-     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-     // ... route logic
+## 3. Role-Based Access Control
+
+YardBase CRM implements a role-based access control system through the UserRole enum with three primary roles:
+
+### ADMIN Role
+- Full access to all system features
+- Can manage users, roles, and system settings
+- Can view and modify all clients, jobs, and estimates
+- Can access administrative dashboards and reports
+
+### MANAGER Role
+- Can view and modify all clients, jobs, and estimates
+- Can assign jobs to staff members
+- Cannot access system settings or user management
+- Can view management-level reports
+
+### STAFF Role
+- Can view assigned jobs and related clients
+- Can create and update job notes
+- Limited access to client information
+- Cannot create or modify estimates without permission
+
+### Role Implementation
+- Role information is stored in the JWT token during authentication
+- Role-based checks are performed in API routes using the session object
+- UI components conditionally render based on the user's role
+- Navigation options vary based on user role
+
+## 4. Authentication & Authorization
+
+YardBase CRM uses NextAuth.js for authentication with a custom credentials provider:
+
+### Authentication Flow
+1. User submits credentials (email/password) on the login form
+2. NextAuth's credentials provider validates the credentials against the database
+3. If valid, a JWT token is generated containing user ID and role
+4. The token is stored as a cookie and used for subsequent authenticated requests
+
+### Key Authentication Files
+- `/src/app/api/auth/[...nextauth]/route.ts`: NextAuth.js configuration and handlers
+- `/src/app/api/auth/register/route.ts`: User registration endpoint
+- `/src/app/login/page.tsx`: Login page component
+- `/src/app/auth/register/page.tsx`: Registration page component
+- `/src/types/next-auth.d.ts`: TypeScript type definitions for NextAuth
+
+### Authentication Process Details
+1. When users visit `/login`, they're presented with a form to enter their email and password
+2. Form validation ensures required fields are filled and have proper format
+3. On submission, credentials are sent to NextAuth's credentials provider in the `/api/auth/[...nextauth]/route.ts` file
+4. The system uses bcrypt to compare the password hash with the stored hash
+5. On successful authentication, NextAuth creates a JWT token with user ID and role
+6. The JWT token is stored as an HTTP-only cookie for security
+7. The user is redirected to the dashboard
+
+### Authorization Implementation
+- Server-side authorization in API routes using `getServerSession(authOptions)`
+- Client-side authorization using the `useSession()` hook
+- Role-based UI rendering based on session data
+
+## 5. Front-End Architecture
+
+### Next.js App Router Structure
+
+The application follows Next.js 14+ App Router conventions:
+
+#### Root Layout and Providers
+- `/src/app/layout.tsx`: Root layout with metadata and global providers
+- `/src/app/providers.tsx`: App-wide providers (SessionProvider, ThemeProvider)
+- `/src/app/error.tsx`: Global error boundary
+- `/src/app/loading.tsx`: Global loading state
+
+#### Page Components
+- `/src/app/page.tsx`: Dashboard/home page
+- `/src/app/clients/page.tsx`: Clients listing page
+- `/src/app/clients/[id]/page.tsx`: Individual client details
+- `/src/app/jobs/page.tsx`: Jobs listing page
+- `/src/app/jobs/[id]/page.tsx`: Individual job details
+- `/src/app/schedule/page.tsx`: Schedule management page
+- `/src/app/schedule/[id]/page.tsx`: Individual schedule item
+- `/src/app/employees/page.tsx`: Employees management page
+
+### Reusable Components
+
+#### Navigation & Layout
+- `/src/components/Layout.tsx`: Main layout wrapper
+  - Contains global layout elements
+  - Wraps all page content for consistent UI
+  - Takes children as props and adds navigation and wrapper elements
+  
+- `/src/components/Navigation.tsx`: Navigation component with responsive drawer
+  - Provides main navigation drawer with links to all sections
+  - Responsive design that collapses to a hamburger menu on mobile
+  - Handles user profile actions (logout, profile view)
+  - Displays user role information
+  - Animated transitions using Framer Motion
+
+#### UI Components
+- `/src/components/DashboardCard.tsx`: Card component used on the dashboard
+  - Displays key metrics with icons and styled backgrounds
+  - Supports color variants based on the metric type (success, warning, error)
+  - Displays trending indicators (up, down, neutral)
+  - Features hover animations for better interactivity
+
+- `/src/components/ErrorBoundary.tsx`: Error boundary component
+  - Catches React component errors
+  - Displays user-friendly error messages
+  - Prevents entire application crashes
+
+- `/src/components/EmployeeSchedule.tsx`: Employee scheduling component
+  - Calendar view showing employee assignments
+  - Handles date navigation (previous/next month)
+  - Displays jobs color-coded by status
+  - Shows tooltips with job details on hover
+  - Fetches data based on date range and employee ID
+
+#### Theme Components
+- `/src/components/ThemeDebugger.tsx`: Theme debugging utility
+  - Shows all theme variables and their current values
+  - Helps developers understand theme structure
+  - Allows real-time theme adjustments during development
+
+- `/src/components/ThemeDebuggerModal.tsx`: Modal for theme debugging
+  - Expanded theme debugging options in a modal dialog
+  - Color pickers for theme customization
+  - Preview of theme changes before applying
+
+- `/src/components/ThemeColorPalette.tsx`: Theme color palette component
+  - Displays color swatches for the theme
+  - Shows primary, secondary, and accent colors
+  - Displays light and dark variants
+
+- `/src/components/ColorSaveManager.tsx`: Component for saving theme colors
+  - Persists theme customizations to localStorage
+  - Handles theme reset functionality
+  - Manages theme applying and state updates
+
+#### Form Components
+- `/src/app/jobs/components/AddJobDialog.tsx`: Job creation dialog
+  - Form for creating a new job
+  - Includes all job fields with appropriate input types
+  - Client selection from dropdown
+  - Date picker for scheduling
+  - Form validation and submission handling
+
+- `/src/app/jobs/components/JobList.tsx`: List of jobs with filtering
+  - Displays jobs in a table format
+  - Handles sorting and filtering
+  - Action buttons for each job
+  - Status indicators with appropriate colors
+
+- `/src/app/jobs/components/JobStatusMenu.tsx`: Job status selector
+  - Dropdown menu for updating job status
+  - Color-coded status options
+  - Handles status change updates to the API
+
+### Theme System
+
+YardBase CRM implements a comprehensive theming system using Material-UI:
+
+#### Theme Configuration
+- `/src/app/styles/theme.ts`: MUI theme configuration with customizations
+  - Defines color palette with custom colors
+  - Sets up typography variants
+  - Configures component styling overrides
+  - Uses CSS variables for runtime theme updates
+
+- `/src/app/styles/useThemeUpdater.tsx`: Custom hook for theme updates
+  - Manages theme state updates
+  - Persists theme changes to localStorage
+  - Provides methods to update specific theme properties
+
+#### Theme Features
+- Custom color palette with primary, secondary, and accent colors
+- Custom typography with logo and heading styles
+- Custom component styles for buttons, cards, and other elements
+- CSS variables for runtime theme customization
+- Theme debugging tools for development
+
+## 6. UI Interaction Patterns & Data Flow
+
+### Dashboard Page
+1. **Initialization**:
+   - User authenticates and is redirected to the dashboard
+   - Dashboard page (`/src/app/page.tsx`) initializes with loading state
+   - `useSession()` hook verifies authentication status
+
+2. **Data Loading**:
+   - Dashboard fetches statistics from multiple API endpoints:
+     - `/api/schedule` to get jobs data
+     - `/api/estimates` to get estimates data
+   - All API calls include authentication via cookies
+
+3. **UI Rendering**:
+   - Dashboard renders cards for key metrics:
+     - Open Jobs count
+     - Pending Estimates count
+     - Scheduled Jobs count
+   - A revenue chart displays monthly earnings
+   - Recent jobs list shows upcoming scheduled work
+   - All UI elements use Framer Motion for entrance animations
+
+4. **Interaction**:
+   - Cards feature hover animations and clickable areas
+   - Users can navigate to detailed views through button links
+   - Chart tooltips provide additional information on hover
+
+### Client Management Flow
+
+1. **Client Listing**:
+   - User navigates to `/clients`
+   - Client page (`/src/app/clients/page.tsx`) loads
+   - Component fetches client data from `/api/clients` GET endpoint
+   - Loading state shown while data is being fetched
+   - Client data is retrieved and stored in state
+
+2. **UI Presentation**:
+   - Clients are displayed as cards with key information
+   - Search field allows filtering by client name/email/phone
+   - Filter dropdown allows selecting client status (all/active/inactive)
+   - Clients cards show:
+     - Client name and contact details
+     - Number of associated jobs
+     - Number of estimates
+     - Action buttons for view/edit/delete
+
+3. **Adding a Client**:
+   - User clicks "Add Client" button
+   - Modal dialog opens with a form
+   - Form contains fields for all client information:
+     - Name (required)
+     - Email (required, validated format)
+     - Phone (required, validated format)
+     - Address, City, State, Zip (all required)
+     - Notes (optional)
+   - Real-time validation occurs on all fields
+   - Submit button is disabled until all required fields are valid
+
+4. **Client Creation Process**:
+   - Form data is collected into a state object
+   - On submit, data is sent to `/api/clients` POST endpoint
+   - Backend validates data and creates client record
+   - On success:
+     - Modal closes
+     - Success snackbar appears
+     - Client list updates with new client
+   - On error:
+     - Form shows error message
+     - Problem field is highlighted
+
+5. **Client Deletion**:
+   - User clicks delete icon on client card
+   - Confirmation dialog appears
+   - If confirmed, DELETE request sent to `/api/clients/${id}`
+   - On success:
+     - Client removed from list
+     - Success snackbar appears
+   - On error:
+     - Error snackbar shows with message
+
+6. **Client Detail View**:
+   - User clicks on client card or view button
+   - Router navigates to `/clients/[id]`
+   - Client detail page loads client information
+   - Page shows:
+     - Client contact information
+     - Associated jobs (past and upcoming)
+     - Estimates history
+     - Notes and activity log
+
+### Job Management Flow
+
+1. **Job Listing**:
+   - User navigates to `/jobs`
+   - Jobs page (`/src/app/jobs/page.tsx`) loads
+   - Component fetches job data from `/api/jobs` GET endpoint
+   - Loading state shows CircularProgress while data is fetched
+   - Data is retrieved and stored in state
+
+2. **UI Presentation**:
+   - Jobs are displayed in a table or card layout
+   - Job statistics shown at the top:
+     - Total jobs count
+     - Job counts by status (scheduled, in progress, completed, pending)
+   - Search field allows filtering by job title/description
+   - Filter buttons allow filtering by job status
+
+3. **Adding a Job**:
+   - User clicks "Add Job" button
+   - `AddJobDialog` component opens with a form
+   - Component fetches client list for the dropdown
+   - Form includes fields for all job information:
+     - Title (required)
+     - Description
+     - Job Type (dropdown with preset options)
+     - Start Date (datetime picker)
+     - End Date (datetime picker)
+     - Price
+     - Client (dropdown of existing clients)
+   - Validation occurs on required fields
+
+4. **Job Creation Process**:
+   - Form data is collected into a state object
+   - On submit, data is sent to `/api/jobs` POST endpoint
+   - Backend validates data and creates job record
+   - Job is automatically assigned to the current user
+   - On success:
+     - Dialog closes
+     - Success snackbar appears
+     - Job list updates with new job
+   - On error:
+     - Form shows error message
+
+5. **Job Status Management**:
+   - User clicks on job status or menu icon
+   - Status menu opens via `JobStatusMenu` component
+   - User selects new status
+   - PUT request sent to `/api/jobs/${id}` with updated status
+   - On success:
+     - Job status updates in the UI
+     - Status color changes to reflect new state
+     - Success notification appears
+   - On error:
+     - Error snackbar appears
+
+6. **Job Detail View**:
+   - User clicks on job row or view button
+   - Router navigates to `/jobs/[id]`
+   - Job detail page loads all job information
+   - Page displays:
+     - Job details and status
+     - Client information
+     - Schedule information
+     - Notes and activity log
+     - Option to add notes or update status
+
+### Schedule Management Flow
+
+1. **Schedule Overview**:
+   - User navigates to `/schedule`
+   - Schedule page loads schedule data from `/api/schedule`
+   - Calendar view initialized with current month
+   - Jobs are retrieved and mapped to calendar dates
+
+2. **Calendar Interaction**:
+   - Previous/next month navigation
+   - Day cells show jobs scheduled for that day
+   - Jobs appear color-coded by status
+   - Hover tooltips show job details
+   - Click on job opens detailed view
+
+3. **Employee Schedule Component**:
+   - `EmployeeSchedule` component shows jobs for a specific employee
+   - Component fetches jobs filtered by employee ID
+   - Calendar displays only jobs assigned to that employee
+   - UI color-codes jobs by status and type
+   - Navigation controls allow browsing different months
+
+4. **Schedule Creation**:
+   - Schedule entries are created via job creation/editing
+   - When a job is assigned a start date, it appears in the schedule
+   - Jobs with status changes update in the schedule view
+   - Calendar automatically reflects all changes
+
+## 7. API Structure & Data Flow
+
+### API Routes Organization
+
+API routes are organized by domain entity:
+
+#### Authentication APIs
+- `/api/auth/[...nextauth]/route.ts`: NextAuth.js handler
+- `/api/auth/register/route.ts`: User registration endpoint
+- `/api/auth/switch-role/route.ts`: Role switching endpoint (for development)
+
+#### Client APIs
+- `/api/clients/route.ts`: Client listing and creation
+- `/api/clients/[id]/route.ts`: Individual client operations
+
+#### Job APIs
+- `/api/jobs/route.ts`: Job listing and creation
+- `/api/jobs/[id]/route.ts`: Individual job operations
+
+#### Schedule APIs
+- `/api/schedule/route.ts`: Schedule listing and creation
+- `/api/schedule/[id]/route.ts`: Individual schedule operations
+
+#### Estimate APIs
+- `/api/estimates/route.ts`: Estimate listing and creation
+- `/api/estimates/[id]/route.ts`: Individual estimate operations
+
+### Data Flow Patterns
+
+#### Client Management Flow
+1. User accesses `/clients` page
+2. Page component fetches client data from `/api/clients` GET endpoint
+3. API route performs database query with Prisma
+4. Results are returned and displayed in the UI
+5. User can create/edit clients, which POST/PUT to the appropriate endpoints
+6. Data updates are reflected in real-time in the UI
+
+#### Job Management Flow
+1. User accesses `/jobs` page
+2. Page component fetches job data from `/api/jobs` GET endpoint
+3. API route performs database query with Prisma, including related entities
+4. Results are returned and displayed in the UI
+5. Jobs can be filtered by status, assigned user, or client
+6. User can create/edit jobs, which POST/PUT to the appropriate endpoints
+
+#### Schedule Management Flow
+1. User accesses `/schedule` page
+2. Page component fetches schedule data from `/api/schedule` GET endpoint
+3. Results are displayed in a calendar or timeline view
+4. Users can create/modify schedule entries based on job data
+5. Updates are persisted to the database via API endpoints
+
+## 8. Form Implementation & Validation
+
+### Client Form Implementation
+1. **Form Structure**:
+   - Form fields are created using Material-UI `TextField` components
+   - Fields are arranged in a responsive grid layout
+   - Required fields are marked with asterisks
+   - Form state is managed with React useState hooks
+
+2. **Client Form Validation**:
+   - Name: Required, minimum length check
+   - Email: Required, email format validation regex
+   - Phone: Required, phone format validation regex
+   - Address: Required, minimum length check
+   - City, State, Zip: All required fields
+   - Validation occurs on change and blur events
+   - Submit button disabled until form is valid
+
+3. **Form Submission Process**:
+   - Form state collected in a formData object
+   - On submit, formData sent as JSON to API
+   - Loading state shown during submission
+   - Success/error handling via snackbar notifications
+   - Form reset on successful submission
+
+### Job Form Implementation
+1. **Form Structure**:
+   - Modal dialog wraps the form (`AddJobDialog` component)
+   - Fields are organized in a vertical column
+   - Dropdowns used for type selection and client selection
+   - DateTime pickers used for scheduling
+   - Form state managed via useState hooks
+
+2. **Job Form Validation**:
+   - Title: Required field
+   - Type: Selection from predefined options
+   - Start/End Date: Date format validation
+   - Price: Number validation
+   - Client: Required selection from dropdown
+   - Submit button enables only when required fields are valid
+
+3. **Form Submission Process**:
+   - Form data collected and formatted
+   - Dates converted to ISO string format
+   - Price parsed as floating-point number
+   - Data sent to API endpoint
+   - Success closes dialog and refreshes job list
+   - Errors displayed in snackbar
+
+### Estimates & Line Items
+1. **Estimate Form**:
+   - Multi-step form process
+   - Client selection step
+   - Estimate details step (title, description, valid until)
+   - Line items step (add multiple items)
+   - Review and submit step
+
+2. **Line Item Management**:
+   - Dynamic addition of line items
+   - Each line item has description, quantity, and unit price
+   - Total calculated automatically
+   - Items can be removed or edited
+   - Line items saved as part of estimate
+
+3. **Validation Strategy**:
+   - Step-by-step validation
+   - Next button disabled until current step is valid
+   - Final submission validates entire form
+   - Backend validation ensures data integrity
+
+## 9. State Management Approaches
+
+### Component-Level State
+1. **Local State Pattern**:
+   - React useState hooks for component-specific state
+   - Form data stored in local state objects
+   - UI state (modals, dialogs, loading) in local state
+   - Most components follow this pattern for simplicity
+
+2. **Parent-Child State Flow**:
+   - Parent components pass data to children via props
+   - Children emit events to parents via callback functions
+   - State lifting used when multiple components need same data
+   - Example: Job list passes selected job ID to status menu
+
+### Session State
+1. **Authentication State**:
+   - NextAuth.js session state via useSession hook
+   - Session contains user ID, name, email, and role
+   - Used throughout app for authentication checks
+   - Role-based UI rendering based on session
+
+2. **Session Access Pattern**:
+   ```tsx
+   const { data: session, status } = useSession();
+   if (status === "unauthenticated") {
+     router.push("/login");
    }
    ```
 
-2. **Page Component Pattern**
-   ```typescript
-   'use client';
-   import { useSession } from 'next-auth/react';
-   // ... component logic
+### Data Fetching & Caching
+1. **Data Fetching Strategy**:
+   - API calls via fetch API
+   - Loading states during data fetching
+   - Error handling for failed requests
+   - Data cached in component state
+
+2. **Data Refresh Strategies**:
+   - Polling for real-time updates on critical pages
+   - Manual refresh buttons for user-initiated updates
+   - Automatic refresh after mutations (create, update, delete)
+
+## 10. UI/UX Implementation Details
+
+### Dashboard UI Implementation
+1. **Layout Structure**:
+   - Grid-based layout with responsive breakpoints
+   - Three metric cards at the top
+   - Revenue chart in the middle
+   - Recent jobs table at the bottom
+   - All wrapped in the main Layout component
+
+2. **Animation Strategy**:
+   - Entrance animations using Framer Motion
+   - Staggered animation timing for card entrance
+   - Hover animations for interactive elements
+   - Transition animations for loading states
+
+3. **Responsive Behavior**:
+   - Mobile: Single column layout
+   - Tablet: Two-column grid
+   - Desktop: Three-column grid for cards, full width for charts
+   - Drawer navigation collapses to hamburger on mobile
+
+### Theme & Styling Techniques
+1. **Material-UI Usage**:
+   - Theme provider setup in providers.tsx
+   - Custom theme defined in theme.ts
+   - Component style overrides in theme.components
+   - Custom palette with brand colors
+
+2. **Custom Components Styling**:
+   - Styled components using MUI's sx prop
+   - Alpha transparency for hover states
+   - Custom shadows for elevation effects
+   - Animation integration with Framer Motion
+
+3. **Typography System**:
+   - Custom typography variants
+   - Logo font family (Fraunces)
+   - Body font family (Plus Jakarta Sans)
+   - Consistent heading weights and sizes
+
+### Navigation & Layout
+1. **Navigation Component Details**:
+   - Permanent drawer on desktop
+   - Temporary drawer on mobile with hamburger toggle
+   - User profile section with role indication
+   - Menu items with icons and text
+   - Active item highlighting
+
+2. **User Profile Menu**:
+   - Triggered from avatar click in header
+   - Shows user name and role
+   - Options for profile, settings, and logout
+   - Logout function calls NextAuth signOut
+
+3. **Layout Composition**:
+   ```tsx
+   <Box sx={{ display: 'flex' }}>
+     <Navigation />
+     <Box
+       component="main"
+       sx={{
+         flexGrow: 1,
+         p: 3,
+         width: { sm: `calc(100% - ${drawerWidth}px)` },
+         ml: { sm: `${drawerWidth}px` },
+         pt: { xs: 10, sm: 12 }
+       }}
+     >
+       {children}
+     </Box>
+   </Box>
    ```
 
-3. **Data Fetching Pattern**
-   ```typescript
-   const [data, setData] = useState([]);
-   useEffect(() => {
-     fetch('/api/endpoint').then(res => res.json()).then(setData);
-   }, []);
-   ```
+## 11. Error Handling & User Feedback
 
-4. **Error Handling Pattern**
-   ```typescript
-   try {
-     // ... operation
-   } catch (error) {
-     if (error instanceof PrismaClientKnownRequestError) {
-       // ... handle specific Prisma errors
+### Error Handling Strategy
+1. **API Error Handling**:
+   - Try/catch blocks around all API calls
+   - Error responses parsed for detailed messages
+   - Specific error handling for Prisma errors
+   - User-friendly error messages displayed
+
+2. **UI Error States**:
+   - Global error boundary catches React errors
+   - Component-level error states for failed API calls
+   - Fallback UI when data cannot be loaded
+   - Retry mechanisms for temporary failures
+
+3. **Error Notification System**:
+   - Snackbar component for temporary notifications
+   - Error severity for error messages
+   - Success severity for confirmation messages
+   - Automatic dismissal after timeout
+
+### Form Validation Feedback
+1. **Real-time Validation**:
+   - Field-level error messages
+   - Validation on blur and on change
+   - Visual indicators (red outline, error text)
+   - Helpful error messages explaining requirements
+
+2. **Form Submission Feedback**:
+   - Loading indicators during submission
+   - Success messages on completion
+   - Error details on failure
+   - Form remains populated on error for correction
+
+3. **Validation Code Example**:
+   ```tsx
+   const [errors, setErrors] = useState({
+     email: '',
+     name: '',
+     phone: ''
+   });
+   
+   const validateField = (name, value) => {
+     switch (name) {
+       case 'email':
+         return /\S+@\S+\.\S+/.test(value) ? '' : 'Invalid email format';
+       case 'name':
+         return value.length >= 2 ? '' : 'Name must be at least 2 characters';
+       // other validations...
      }
-     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
-   }
+   };
+   
+   const handleInputChange = (e) => {
+     const { name, value } = e.target;
+     setFormData({ ...formData, [name]: value });
+     setErrors({ ...errors, [name]: validateField(name, value) });
+   };
    ```
+
+### Loading States
+1. **Global Loading**:
+   - App-wide loading state in layout.tsx
+   - Circular progress indicator centered on page
+   - Applied during initial data fetching
+
+2. **Component Loading**:
+   - Individual loading states for components
+   - Skeleton loaders for content
+   - Disabled buttons during processing
+   - Progress indicators for long operations
+
+3. **Loading State Example**:
+   ```tsx
+   const [loading, setLoading] = useState(true);
+   
+   useEffect(() => {
+     const fetchData = async () => {
+       setLoading(true);
+       try {
+         const res = await fetch('/api/endpoint');
+         const data = await res.json();
+         setData(data);
+       } catch (error) {
+         setError(error.message);
+       } finally {
+         setLoading(false);
+       }
+     };
+     
+     fetchData();
+   }, []);
+   
+   if (loading) return <CircularProgress />;
+   ```
+
+## 12. Advanced Features & Workflows
+
+### Estimate Workflow
+1. User creates an estimate for a client
+2. Estimate status starts as DRAFT
+3. Line items are added to the estimate with quantities and pricing
+4. Estimate can be sent to client (status: SENT)
+5. Client can accept/reject the estimate
+6. Accepted estimates can be converted to jobs
+
+### Job Lifecycle
+1. Job is created (status: PENDING)
+2. Job is scheduled (status: SCHEDULED)
+3. Work begins (status: IN_PROGRESS)
+4. Work is completed (status: COMPLETED)
+5. Notes and updates are added throughout the lifecycle
+6. Jobs can be canceled at any point (status: CANCELLED)
+
+### Employee Scheduling
+1. Jobs are assigned to employees
+2. Schedule is visualized in calendar view
+3. Conflicts are highlighted and prevented
+4. Employees can view their assigned jobs
+5. Managers can reassign and reschedule as needed
+
+## 13. Future Expansion Features
+
+### Mapping & Routing
+- GPS integration for job locations
+- Route optimization for multiple jobs
+- Travel time estimation
+- Map visualization of client locations
+- Turn-by-turn directions for employees
+
+### Notification System
+- SMS notifications to employees for job assignments
+- Email notifications to clients for estimate updates
+- Push notifications for mobile app
+- Customizable notification preferences
+- Automated reminders for upcoming jobs
+
+### Mobile Application
+- Native mobile experience for field employees
+- Offline capability for remote areas
+- Photo and document upload from job sites
+- GPS check-in/check-out for job verification
+- Mobile-optimized interface for quick updates
+
+### Client Portal
+- Self-service portal for clients
+- Ability to view and approve estimates
+- Job status tracking
+- Payment processing
+- Document sharing and communication
+
+### Reporting & Analytics
+- Business intelligence dashboard
+- Revenue and profitability reports
+- Employee productivity metrics
+- Client acquisition and retention analysis
+- Seasonal trend analysis
+
+### Integration Capabilities
+- QuickBooks/accounting software integration
+- Weather service integration for scheduling
+- CRM platform integrations (Salesforce, HubSpot)
+- Payment processing integrations
+- Calendar syncing with Google/Outlook
+
+## 14. Development Workflow & Best Practices
+
+### Database Changes
+1. Modify `prisma/schema.prisma` with new models or fields
+2. Run `prisma generate` to update the Prisma client
+3. Create and apply migrations with `prisma migrate dev`
+4. Update affected API routes and components
+
+### Feature Development
+1. Create new API routes for data access
+2. Implement server-side validation and error handling
+3. Develop UI components with proper loading and error states
+4. Implement client-side form validation
+5. Add proper authentication and authorization checks
+
+### Code Organization Patterns
+- Group related components in subdirectories
+- Use custom hooks for reusable logic
+- Implement proper TypeScript types for all components
+- Follow the Next.js patterns for data fetching and routing
+
+### Testing Approach
+- Unit tests for utility functions
+- API route testing with jest
+- Component testing with React Testing Library
+- End-to-end testing with Cypress or Playwright
+
+## 15. Deployment & Infrastructure
+
+### Environment Variables
+- `DATABASE_URL`: PostgreSQL connection string
+- `NEXTAUTH_URL`: Base URL for NextAuth.js
+- `NEXTAUTH_SECRET`: Secret for JWT signing
+- Additional secrets for integrations (SMS, email, etc.)
+
+### Deployment Options
+- Vercel (recommended for Next.js)
+- Docker containers on custom infrastructure
+- Serverless deployment on AWS/Azure/GCP
+
+### Database Options
+- Managed PostgreSQL (AWS RDS, Azure Database, GCP Cloud SQL)
+- Self-hosted PostgreSQL
+- Specialized PostgreSQL hosting (Supabase, Neon)
+
+### Scaling Considerations
+- Database connection pooling
+- API rate limiting
+- Caching strategies (Redis, Vercel Edge Cache)
+- Image and asset optimization
+
+## 16. System Integration Points
+
+### Potential Integration Interfaces
+- REST API endpoints for external services
+- Webhook handlers for real-time updates
+- OAuth connections for third-party services
+- File upload/download interfaces
+- Payment processing webhooks
+
+### Data Exchange Formats
+- JSON for most API responses
+- CSV for data exports
+- PDF for estimates and invoices
+- iCal for calendar integration
+- GeoJSON for location data
+
+## 17. Debugging & Monitoring
+
+### Built-in Debugging Tools
+- Theme Debugger for UI development
+- NextAuth.js debug mode for authentication issues
+- Prisma query logging for database operations
+
+### Monitoring Recommendations
+- Error logging with Sentry or similar service
+- Performance monitoring with Vercel Analytics
+- Database query performance tracking
+- API usage and error rate monitoring
+- User session and behavior analytics
+
+## 18. Security Considerations
+
+### Authentication Security
+- Passwords stored with bcrypt hashing
+- JWT tokens with proper expiration
+- HTTPS-only cookie storage
+- CSRF protection
+
+### API Security
+- Input validation on all endpoints
+- Rate limiting to prevent abuse
+- Proper error handling without data leakage
+- Role-based access control
+
+### Data Protection
+- Database encryption at rest
+- Personal data handling per GDPR/CCPA
+- Audit logging for sensitive operations
+- Regular security reviews and updates

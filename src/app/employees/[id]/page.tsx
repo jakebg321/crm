@@ -21,6 +21,7 @@ import {
 import { useSession } from 'next-auth/react';
 import Layout from '@/components/Layout';
 import { UserRole, JobStatus } from '@prisma/client';
+import EmployeeSchedule from '@/components/EmployeeSchedule';
 
 interface Employee {
   id: string;
@@ -252,10 +253,7 @@ export default function EmployeeDetails({
           </TabPanel>
 
           <TabPanel value={tabValue} index={1}>
-            {/* TODO: Implement schedule view */}
-            <Typography variant="body1" color="text.secondary">
-              Schedule view coming soon...
-            </Typography>
+            <EmployeeSchedule employeeId={params.id} />
           </TabPanel>
         </Paper>
       </Box>

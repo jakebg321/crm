@@ -1,34 +1,56 @@
-# PostgreSQL Database Configuration for Landscape CRM
+# PostgreSQL Database Configuration for YardBase CRM
 
-## Database Connection Details
-DATABASE_NAME=landscape_crm
-DATABASE_HOST=localhost
-DATABASE_PORT=5432
-DATABASE_USER=jake
-DATABASE_PASSWORD=password
+## Database Overview
+YardBase CRM uses PostgreSQL as its primary database, managed via Prisma ORM. The schema is defined in `prisma/schema.prisma` and includes models for users, jobs, clients, estimates, and notes. The database is designed to support multi-role access (Admin, Employee, Client) with robust relational integrity.
 
-## Connection String Format
-# For Prisma (in .env file):
+### Key Models & Relationships
+- **User**: Represents all users (admins, employees, staff). Has fields for `id`, `email`, `name`, `password`, `role` (enum: ADMIN, MANAGER, STAFF), and relations to jobs and notes.
+- **Client**: Represents customers. Linked to jobs and estimates.
+- **Job**: Represents scheduled work. Linked to a client, assigned employee (User), and creator (User). Has status, type, dates, and price.
+- **Estimate**: Linked to a client and creator (User).
+- **Note**: Linked to a job and creator (User). Used for job notes and tracking.
+
+### Role-Based Access
+- **Admin**: Full access to all tables and actions. Can manage users, jobs, clients, estimates, and notes.
+- **Manager**: Can manage jobs, clients, and view all employees, but cannot manage admin users.
+- **Staff/Employee**: Can view and update their own jobs and notes. Limited access to client data.
+- **Client**: (Future) Will have limited access to their own jobs and estimates (not yet implemented).
+
+### Prisma & Connection
+- Prisma connects via the `DATABASE_URL` in `.env` (see below).
+- All database operations are performed through the Prisma client (`src/lib/prisma.ts`).
+- Migrations are managed via `npx prisma migrate dev`.
+- Seeding is done via `prisma/seed.ts`.
+
+### Authentication & Authorization
+- **Authentication**: Handled by NextAuth.js. User sessions are checked in all API routes before DB access.
+- **Authorization**: Enforced in API routes by checking `session.user.role` and `session.user.id` before allowing DB operations. The DB itself does not enforce row-level security; all access control is in the application layer.
+
+### Best Practices
+- Always run migrations after schema changes: `npx prisma migrate dev --schema=prisma/schema.prisma`
+- Regenerate Prisma client after schema changes: `npx prisma generate --schema=prisma/schema.prisma`
+- Use Prisma Studio (`npx prisma studio`) to inspect and debug data.
+- Never expose raw passwords or sensitive data in API responses.
+- Always check for user existence and permissions in API routes before DB operations.
+- For troubleshooting, check both the Next.js terminal logs and Prisma errors.
+
+### Troubleshooting
+- **Connection errors**: Check `DATABASE_URL` in `.env` and ensure PostgreSQL is running.
+- **Migration errors**: Ensure schema and DB are in sync. Use `prisma migrate resolve` if migrations are stuck.
+- **Prisma errors**: Check for missing relations, enum mismatches, or invalid data.
+- **Session errors**: Ensure NextAuth.js is configured and sessions are valid.
+
+## Example .env
+```
 DATABASE_URL="postgresql://jake:password@localhost:5432/landscape_crm"
+NEXTAUTH_SECRET=your-secret
+NEXTAUTH_URL=http://localhost:3000
+```
 
-## Commands Used for Setup
-
-# Create Database
-psql -U postgres -c "CREATE DATABASE landscape_crm;"
-
-# Create User and Grant Privileges
-psql -U postgres -d landscape_crm -c "CREATE USER jake WITH ENCRYPTED PASSWORD 'password'; GRANT ALL PRIVILEGES ON DATABASE landscape_crm TO jake;"
-
-## Next Steps
-
-# 1. Create .env file for Prisma
-echo DATABASE_URL="postgresql://jake:password@localhost:5432/landscape_crm" > .env
-
-# 2. Run Prisma migrations to set up schema
-npx prisma migrate dev --name init
-
-# 3. Seed database with test data (optional)
-npx prisma db seed
-
-# 4. View database with Prisma Studio
-npx prisma studio
+## Setup Steps (Recap)
+1. Create the database and user (see commands above).
+2. Set up `.env` with the correct `DATABASE_URL`.
+3. Run migrations: `npx prisma migrate dev --name init`.
+4. Seed the database: `npx prisma db seed` (optional).
+5. Start the app: `npm run dev`.
+6. Use Prisma Studio for DB inspection: `npx prisma studio`.

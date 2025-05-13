@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { prisma } from '@/lib/prisma';
-import { authOptions } from '@/lib/auth';
+import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 
 export async function GET(
   request: Request,
@@ -9,12 +9,8 @@ export async function GET(
 ) {
   try {
     const session = await getServerSession(authOptions);
-
-    if (!session) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // Check if user is requesting their own jobs or is an admin/manager
@@ -50,7 +46,7 @@ export async function GET(
   } catch (error) {
     console.error('Error fetching employee jobs:', error);
     return NextResponse.json(
-      { error: 'Internal Server Error' },
+      { error: 'Failed to fetch employee jobs' },
       { status: 500 }
     );
   }

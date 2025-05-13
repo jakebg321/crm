@@ -19,6 +19,9 @@ model User {
   createdJobs     Job[]      @relation("CreatedBy")
   createdEstimates Estimate[] @relation("CreatedEstimates")
   notes           Note[]     @relation("CreatedNotes")
+  savedItems      SavedItem[] @relation("UserSavedItems")
+  estimateTemplates EstimateTemplate[] @relation("UserEstimateTemplates")
+  settings        UserSettings?
 }
 
 model Client {
@@ -88,6 +91,39 @@ model LineItem {
   estimate    Estimate @relation(fields: [estimateId], references: [id])
 }
 
+model SavedItem {
+  id          String   @id @default(cuid())
+  description String
+  unitPrice   Float
+  quantity    Int      @default(1)
+  category    String?  @default("Other")
+  userId      String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  user        User     @relation("UserSavedItems", fields: [userId], references: [id])
+  templateItems TemplateItem[]
+}
+
+model EstimateTemplate {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  userId      String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  user        User     @relation("UserEstimateTemplates", fields: [userId], references: [id])
+  items       TemplateItem[]
+}
+
+model TemplateItem {
+  id                String           @id @default(cuid())
+  quantity          Int              @default(1)
+  savedItemId       String
+  estimateTemplateId String
+  savedItem         SavedItem        @relation(fields: [savedItemId], references: [id])
+  estimateTemplate  EstimateTemplate @relation(fields: [estimateTemplateId], references: [id])
+}
+
 model Note {
   id          String   @id @default(cuid())
   content     String
@@ -98,6 +134,17 @@ model Note {
   jobId       String
   createdBy   User     @relation("CreatedNotes", fields: [createdById], references: [id])
   createdById String
+}
+
+model UserSettings {
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  companySettings   String?  @db.Text
+  estimateSettings  String?  @db.Text
+  brandingSettings  String?  @db.Text
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  user              User     @relation(fields: [userId], references: [id])
 }
 
 enum UserRole {

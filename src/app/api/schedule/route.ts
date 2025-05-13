@@ -42,6 +42,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
+    const employeeId = searchParams.get('employeeId');
 
     if (!startDate || !endDate) {
       console.log('Missing date parameters');
@@ -74,31 +75,39 @@ export async function GET(request: Request) {
     
     // Now try to fetch the jobs
     try {
+      const where = {
+        startDate: {
+          gte: new Date(startDate),
+          lte: new Date(endDate),
+        },
+        ...(employeeId && {
+          assignedToId: employeeId,
+        }),
+      };
+      
       // First check if the job table exists by trying a count
       const jobCount = await prisma.job.count({
-        where: { 
-          createdById: session.user.id,
-          startDate: {
-            gte: new Date(startDate),
-            lte: new Date(endDate),
-          }
-        }
+        where: where
       });
       
       console.log(`Found ${jobCount} jobs in count query`);
       
       // If we get here, the table exists, so we can try the full query
       const jobs = await prisma.job.findMany({
-        where: {
-          createdById: session.user.id,
-          startDate: {
-            gte: new Date(startDate),
-            lte: new Date(endDate),
-          },
-        },
+        where,
         include: {
-          client: true,
-          assignedTo: true,
+          client: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+          assignedTo: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
         },
         orderBy: {
           startDate: 'asc',
