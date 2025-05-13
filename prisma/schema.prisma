@@ -18,6 +18,7 @@ model User {
   assignedJobs    Job[]      @relation("AssignedTo")
   createdJobs     Job[]      @relation("CreatedBy")
   createdEstimates Estimate[] @relation("CreatedEstimates")
+  notes           Note[]     @relation("CreatedNotes")
 }
 
 model Client {
@@ -88,12 +89,15 @@ model LineItem {
 }
 
 model Note {
-  id        String   @id @default(cuid())
-  content   String
-  jobId     String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  job       Job      @relation(fields: [jobId], references: [id])
+  id          String   @id @default(cuid())
+  content     String
+  completed   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  completedAt DateTime?
+  job         Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  jobId       String
+  createdBy   User     @relation("CreatedNotes", fields: [createdById], references: [id])
+  createdById String
 }
 
 enum UserRole {
