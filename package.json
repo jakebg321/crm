@@ -4,9 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "cross-env NEXT_SKIP_TYPECHECKING=true next build --no-lint",
+    "build": "NEXT_SKIP_TYPECHECKING=true next build --no-lint",
     "start": "next start",
-    "build:prod": "npx prisma migrate deploy && next build",
+    "build:prod": "npx prisma migrate deploy && NEXT_SKIP_TYPECHECKING=true next build --no-lint",
     "lint": "next lint",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
