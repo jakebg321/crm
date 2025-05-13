@@ -1,0 +1,30 @@
+Hostname
+An internal hostname used by your Render services.
+
+dpg-d0hscibuibrs739nnl8g-a
+
+Port
+5432
+
+Database
+yardbase_crm_db
+
+Username
+yardbase_crm_db_user
+
+Password
+UE4ZHd7iZtuBgylaR1JrnZFDPvdPNTzI
+
+
+Internal Database URL
+postgresql://yardbase_crm_db_user:UE4ZHd7iZtuBgylaR1JrnZFDPvdPNTzI@dpg-d0hscibuibrs739nnl8g-a/yardbase_crm_db
+
+
+External Database URL
+postgresql://yardbase_crm_db_user:UE4ZHd7iZtuBgylaR1JrnZFDPvdPNTzI@dpg-d0hscibuibrs739nnl8g-a.ohio-postgres.render.com/yardbase_crm_db
+
+
+PSQL Command
+PGPASSWORD=UE4ZHd7iZtuBgylaR1JrnZFDPvdPNTzI psql -h dpg-d0hscibuibrs739nnl8g-a.ohio-postgres.render.com -U yardbase_crm_db_user yardbase_crm_db
+
+

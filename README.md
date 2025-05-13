@@ -1,6 +1,7 @@
 
 ```
 crm
+├─ AiNotes.txt
 ├─ components.txt
 ├─ dbConfg.txt
 ├─ eslint.config.mjs
@@ -19,6 +20,10 @@ crm
 │  │  │  └─ migration.sql
 │  │  ├─ 20250513025205_add_notes
 │  │  │  └─ migration.sql
+│  │  ├─ 20250513202503_add_saved_items_and_templates
+│  │  │  └─ migration.sql
+│  │  ├─ 20250513203411_add_category_to_saved_items
+│  │  │  └─ migration.sql
 │  │  └─ migration_lock.toml
 │  ├─ schema.prisma
 │  └─ seed.ts
@@ -29,25 +34,53 @@ crm
 │  ├─ vercel.svg
 │  └─ window.svg
 ├─ README.md
+├─ renderDBVALUES.txt
 ├─ src
 │  ├─ app
 │  │  ├─ api
 │  │  │  ├─ auth
 │  │  │  │  ├─ register
 │  │  │  │  │  └─ RegisterRoute.ts
+│  │  │  │  ├─ switch-role
+│  │  │  │  │  └─ route.ts
 │  │  │  │  └─ [...nextauth]
 │  │  │  │     └─ route.ts
 │  │  │  ├─ clients
 │  │  │  │  ├─ route.ts
 │  │  │  │  └─ [id]
 │  │  │  │     └─ route.ts
+│  │  │  ├─ employees
+│  │  │  │  ├─ route.ts
+│  │  │  │  └─ [id]
+│  │  │  │     ├─ jobs
+│  │  │  │     │  └─ route.ts
+│  │  │  │     └─ route.ts
+│  │  │  ├─ estimate-templates
+│  │  │  │  ├─ route.ts
+│  │  │  │  └─ [id]
+│  │  │  │     └─ route.ts
 │  │  │  ├─ estimates
-│  │  │  │  └─ route.ts
-│  │  │  └─ schedule
-│  │  │     ├─ route.ts
-│  │  │     └─ [id]
-│  │  │        ├─ notes
-│  │  │        │  └─ route.ts
+│  │  │  │  ├─ route.ts
+│  │  │  │  └─ [id]
+│  │  │  │     ├─ duplicate
+│  │  │  │     │  └─ route.ts
+│  │  │  │     ├─ email
+│  │  │  │     │  └─ route.ts
+│  │  │  │     └─ route.ts
+│  │  │  ├─ saved-items
+│  │  │  │  ├─ route.ts
+│  │  │  │  └─ [id]
+│  │  │  │     └─ route.ts
+│  │  │  ├─ schedule
+│  │  │  │  ├─ route.ts
+│  │  │  │  └─ [id]
+│  │  │  │     ├─ notes
+│  │  │  │     │  ├─ route.ts
+│  │  │  │     │  └─ [noteId]
+│  │  │  │     │     └─ route.ts
+│  │  │  │     └─ route.ts
+│  │  │  └─ settings
+│  │  │     └─ estimates
 │  │  │        └─ route.ts
 │  │  ├─ auth
 │  │  │  ├─ error
@@ -60,7 +93,21 @@ crm
 │  │  │  ├─ page.tsx
 │  │  │  └─ [id]
 │  │  │     └─ page.tsx
+│  │  ├─ employees
+│  │  │  ├─ page.tsx
+│  │  │  └─ [id]
+│  │  │     └─ page.tsx
 │  │  ├─ error.tsx
+│  │  ├─ estimates
+│  │  │  ├─ components
+│  │  │  │  ├─ AddEstimateDialog.tsx
+│  │  │  │  ├─ LineItemForm.tsx
+│  │  │  │  └─ SavedItemsDrawer.tsx
+│  │  │  ├─ materials
+│  │  │  │  └─ page.tsx
+│  │  │  ├─ page.tsx
+│  │  │  └─ settings
+│  │  │     └─ page.tsx
 │  │  ├─ jobs
 │  │  │  ├─ components
 │  │  │  │  ├─ AddJobDialog.tsx
@@ -87,16 +134,20 @@ crm
 │  ├─ components
 │  │  ├─ ColorSaveManager.tsx
 │  │  ├─ DashboardCard.tsx
+│  │  ├─ EmployeeSchedule.tsx
 │  │  ├─ ErrorBoundary.tsx
 │  │  ├─ Layout.tsx
 │  │  ├─ Navigation.tsx
+│  │  ├─ RoleSwitcher.tsx
 │  │  ├─ ThemeColorPalette.tsx
 │  │  ├─ ThemeDebugger.tsx
 │  │  └─ ThemeDebuggerModal.tsx
 │  ├─ lib
 │  │  └─ prisma.ts
-│  └─ types
-│     └─ next-auth.d.ts
+│  ├─ types
+│  │  └─ next-auth.d.ts
+│  └─ utils
+│     └─ formatters.ts
 ├─ steps.txt
 ├─ tracker.txt
 └─ tsconfig.json

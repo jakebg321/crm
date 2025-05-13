@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '../../../auth/[...nextauth]/route';
+import { authOptions } from '@/lib/auth';
 import * as nodemailer from 'nodemailer';
 // In a production environment, you would use a real PDF generation library like PDFKit or jsPDF
 // For this example, we'll create a placeholder for PDF generation
