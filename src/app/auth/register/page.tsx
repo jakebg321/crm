@@ -10,9 +10,12 @@ import {
   Paper,
   Alert,
   InputAdornment,
+  Link as MuiLink,
 } from "@mui/material";
-import { Email, Lock, Person } from "@mui/icons-material";
+import { Email, Lock, Person, ArrowBack } from "@mui/icons-material";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
+import Link from "next/link";
 
 const AUTOSAVE_KEY = "registerFormDraft";
 const AUTOSAVE_DEBOUNCE = 500; // ms
@@ -26,6 +29,14 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
+  const { status } = useSession();
+
+  // Redirect authenticated users to dashboard
+  useEffect(() => {
+    if (status === "authenticated") {
+      router.push("/");
+    }
+  }, [status, router]);
 
   // Restore draft on mount
   useEffect(() => {
@@ -75,6 +86,11 @@ export default function RegisterPage() {
     }
   };
 
+  // Don't render the form if we're redirecting
+  if (status === "authenticated") {
+    return <Box sx={{ p: 6, textAlign: 'center' }}>Redirecting to dashboard...</Box>;
+  }
+
   return (
     <Box
       sx={{
@@ -83,8 +99,20 @@ export default function RegisterPage() {
         alignItems: "center",
         justifyContent: "center",
         background: (theme) => theme.palette.background.default,
+        position: "relative",
       }}
     >
+      <Box sx={{ position: "absolute", top: 20, left: 20 }}>
+        <Button
+          startIcon={<ArrowBack />}
+          component={Link}
+          href="/home"
+          color="primary"
+        >
+          Back to Home
+        </Button>
+      </Box>
+      
       <Paper
         elevation={3}
         sx={{
@@ -96,7 +124,7 @@ export default function RegisterPage() {
         }}
       >
         <Typography variant="h4" fontWeight={700} mb={2} color="primary">
-          YardBase CRM
+          GreenLead
         </Typography>
         <Typography variant="h6" mb={3} color="text.secondary">
           Create your account
@@ -176,9 +204,9 @@ export default function RegisterPage() {
         <Box mt={4} textAlign="center">
           <Typography variant="body2" color="text.secondary">
             Already have an account?{' '}
-            <a href="/login" style={{ color: '#389757', textDecoration: 'underline' }}>
+            <MuiLink component={Link} href="/login" color="primary" underline="hover">
               Sign in
-            </a>
+            </MuiLink>
           </Typography>
         </Box>
       </Paper>

@@ -8,6 +8,7 @@ import { alpha, useTheme } from '@mui/material/styles';
 import { motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 
 interface DashboardStats {
   jobs: number;
@@ -18,7 +19,8 @@ interface DashboardStats {
 
 export default function Dashboard() {
   const theme = useTheme();
-  const { status } = useSession();
+  const { data: session, status } = useSession();
+  const router = useRouter();
   const [stats, setStats] = useState<DashboardStats>({ 
     jobs: 0, 
     estimates: 0, 
@@ -28,7 +30,14 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Redirect unauthenticated users to the home page
+    if (status === 'unauthenticated') {
+      router.push('/home');
+      return;
+    }
+    
     if (status !== 'authenticated') return;
+    
     async function fetchStats() {
       setLoading(true);
       // Fetch jobs
@@ -66,7 +75,17 @@ export default function Dashboard() {
       setLoading(false);
     }
     fetchStats();
-  }, [status]);
+  }, [status, router]);
+
+  // Show loading state while checking authentication
+  if (status === 'loading' || (status === 'unauthenticated' && loading)) {
+    return <Box sx={{ p: 6, textAlign: 'center' }}>Loading...</Box>;
+  }
+
+  // Don't render the dashboard for unauthenticated users (they should be redirected)
+  if (status === 'unauthenticated') {
+    return null;
+  }
 
   if (loading) return <Layout><Box sx={{ p: 6, textAlign: 'center' }}>Loading...</Box></Layout>;
 

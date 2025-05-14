@@ -87,7 +87,7 @@ export default function Navigation() {
         py: 1.5,
       }}>
         <Typography variant="logo" noWrap component="div" sx={{ color: theme.palette.primary.main }}>
-          YardBase CRM
+          GreenLead
         </Typography>
       </Toolbar>
       <List sx={{ px: 1 }}>
@@ -186,7 +186,7 @@ export default function Navigation() {
               <MenuIcon />
             </IconButton>
             <Typography variant="h6" noWrap component="div" sx={{ fontWeight: 600 }}>
-              YardBase CRM
+              GreenLead
             </Typography>
           </Box>
           

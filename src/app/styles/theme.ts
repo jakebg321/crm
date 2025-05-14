@@ -15,16 +15,16 @@ const cssVar = (name: string, fallback: string) => {
 const theme = createTheme({
   palette: {
     primary: {
-      main: cssVar('primary-main', '#253944'),
-      light: cssVar('primary-light', '#293f4c'),
-      dark: cssVar('primary-dark', '#243843'),
-      contrastText: cssVar('primary-contrastText', '#f6f5f0'),
+      main: cssVar('primary-main', '#2a724a'),
+      light: cssVar('primary-light', '#3d8a5e'),
+      dark: cssVar('primary-dark', '#1e5a39'),
+      contrastText: cssVar('primary-contrastText', '#ffffff'),
     },
     secondary: {
       main: cssVar('secondary-main', '#f6f5f0'),
       light: cssVar('secondary-light', '#f2f1ed'),
       dark: cssVar('secondary-dark', '#f8f7f2'),
-      contrastText: cssVar('secondary-contrastText', '#253944'),
+      contrastText: cssVar('secondary-contrastText', '#2a724a'),
     },
     success: {
       main: cssVar('success-main', '#389758'),
@@ -42,13 +42,13 @@ const theme = createTheme({
       dark: cssVar('error-dark', '#d32f2f'),
     },
     info: {
-      main: cssVar('info-main', '#293f4c'),
-      light: cssVar('info-light', '#253944'),
-      dark: cssVar('info-dark', '#243843'),
+      main: cssVar('info-main', '#3d8a5e'),
+      light: cssVar('info-light', '#2a724a'),
+      dark: cssVar('info-dark', '#1e5a39'),
     },
     text: {
-      primary: cssVar('text-primary', '#000000'),
-      secondary: cssVar('text-secondary', '#253944'),
+      primary: cssVar('text-primary', '#2c2c2c'),
+      secondary: cssVar('text-secondary', '#2a724a'),
     },
     background: {
       default: cssVar('background-default', '#f6f5f0'),
@@ -159,7 +159,7 @@ const theme = createTheme({
           transition: 'all 0.2s ease-in-out',
           '&:hover': {
             transform: 'translateY(-4px)',
-            boxShadow: `0px 8px 20px ${alpha(cssVar('primary-main', '#253944'), 0.12)}`,
+            boxShadow: `0px 8px 20px ${alpha(cssVar('primary-main', '#2a724a'), 0.12)}`,
           },
         },
         elevation1: {
@@ -178,24 +178,24 @@ const theme = createTheme({
           transition: 'all 0.2s ease-in-out',
           '&:hover': {
             transform: 'translateY(-2px)',
-            boxShadow: `0px 4px 12px ${alpha(cssVar('primary-main', '#253944'), 0.15)}`,
+            boxShadow: `0px 4px 12px ${alpha(cssVar('primary-main', '#2a724a'), 0.15)}`,
           },
         },
         contained: {
           boxShadow: 'none',
-          background: cssVar('primary-main', '#253944'),
-          color: cssVar('primary-contrastText', '#f6f5f0'),
+          background: cssVar('primary-main', '#2a724a'),
+          color: cssVar('primary-contrastText', '#ffffff'),
           '&:hover': {
-            boxShadow: `0px 6px 16px ${alpha(cssVar('primary-main', '#253944'), 0.2)}`,
-            background: cssVar('primary-dark', '#243843'),
+            boxShadow: `0px 6px 16px ${alpha(cssVar('primary-main', '#2a724a'), 0.2)}`,
+            background: cssVar('primary-dark', '#1e5a39'),
           },
         },
         outlined: {
-          borderColor: cssVar('primary-main', '#253944'),
-          color: cssVar('primary-main', '#253944'),
+          borderColor: cssVar('primary-main', '#2a724a'),
+          color: cssVar('primary-main', '#2a724a'),
           '&:hover': {
-            borderColor: cssVar('primary-dark', '#243843'),
-            background: `rgba(${parseInt(cssVar('primary-main', '#253944').slice(1, 3), 16)}, ${parseInt(cssVar('primary-main', '#253944').slice(3, 5), 16)}, ${parseInt(cssVar('primary-main', '#253944').slice(5, 7), 16)}, 0.04)`,
+            borderColor: cssVar('primary-dark', '#1e5a39'),
+            background: `rgba(${parseInt(cssVar('primary-main', '#2a724a').slice(1, 3), 16)}, ${parseInt(cssVar('primary-main', '#2a724a').slice(3, 5), 16)}, ${parseInt(cssVar('primary-main', '#2a724a').slice(5, 7), 16)}, 0.04)`,
           },
         },
       },
@@ -209,7 +209,7 @@ const theme = createTheme({
           transition: 'all 0.2s ease-in-out',
           '&:hover': {
             transform: 'translateY(-4px)',
-            boxShadow: `0px 8px 20px ${alpha(cssVar('primary-main', '#253944'), 0.12)}`,
+            boxShadow: `0px 8px 20px ${alpha(cssVar('primary-main', '#2a724a'), 0.12)}`,
           },
         },
       },
@@ -221,13 +221,13 @@ const theme = createTheme({
           margin: '4px 8px',
           transition: 'all 0.2s ease-in-out',
           '&.Mui-selected': {
-            backgroundColor: alpha(cssVar('primary-main', '#253944'), 0.12),
+            backgroundColor: alpha(cssVar('primary-main', '#2a724a'), 0.12),
             '&:hover': {
-              backgroundColor: alpha(cssVar('primary-main', '#253944'), 0.18),
+              backgroundColor: alpha(cssVar('primary-main', '#2a724a'), 0.18),
             },
           },
           '&:hover': {
-            backgroundColor: alpha(cssVar('primary-main', '#253944'), 0.06),
+            backgroundColor: alpha(cssVar('primary-main', '#2a724a'), 0.06),
           },
         },
       },
@@ -236,7 +236,7 @@ const theme = createTheme({
       styleOverrides: {
         root: {
           minWidth: 40,
-          color: cssVar('primary-main', '#253944'),
+          color: cssVar('primary-main', '#2a724a'),
         },
       },
     },
@@ -244,7 +244,7 @@ const theme = createTheme({
       styleOverrides: {
         paper: {
           borderRight: 'none',
-          boxShadow: `4px 0px 16px ${alpha(cssVar('primary-main', '#253944'), 0.06)}`,
+          boxShadow: `4px 0px 16px ${alpha(cssVar('primary-main', '#2a724a'), 0.06)}`,
           backgroundColor: cssVar('secondary-main', '#f6f5f0'),
         },
       },
@@ -253,8 +253,8 @@ const theme = createTheme({
       styleOverrides: {
         root: {
           backgroundColor: cssVar('secondary-light', '#f2f1ed'),
-          color: cssVar('text-primary', '#000000'),
-          boxShadow: `0px 2px 8px ${alpha(cssVar('primary-main', '#253944'), 0.04)}`,
+          color: cssVar('text-primary', '#2c2c2c'),
+          boxShadow: `0px 2px 8px ${alpha(cssVar('primary-main', '#2a724a'), 0.04)}`,
         },
       },
     },
@@ -263,7 +263,7 @@ const theme = createTheme({
         root: {
           backgroundColor: cssVar('secondary-main', '#f6f5f0'),
           '& .MuiTableCell-root': {
-            color: cssVar('primary-main', '#253944'),
+            color: cssVar('primary-main', '#2a724a'),
             fontWeight: 600,
             letterSpacing: '0.02em',
           },
@@ -288,13 +288,13 @@ const theme = createTheme({
           fontWeight: 500,
           letterSpacing: '0.02em',
           '&.MuiChip-filled': {
-            backgroundColor: alpha('#253944', 0.12),
-            color: '#253944',
+            backgroundColor: alpha('#2a724a', 0.12),
+            color: '#2a724a',
           },
         },
         outlined: {
-          borderColor: '#253944',
-          color: '#253944',
+          borderColor: '#2a724a',
+          color: '#2a724a',
         },
       },
     },
@@ -307,10 +307,10 @@ const theme = createTheme({
               borderColor: '#f8f7f2',
             },
             '&:hover fieldset': {
-              borderColor: '#253944',
+              borderColor: '#2a724a',
             },
             '&.Mui-focused fieldset': {
-              borderColor: '#253944',
+              borderColor: '#2a724a',
             },
           },
         },
@@ -335,7 +335,7 @@ const theme = createTheme({
         root: {
           fontWeight: 600,
           '&.Mui-selected': {
-            color: '#253944',
+            color: '#2a724a',
           },
         },
       },

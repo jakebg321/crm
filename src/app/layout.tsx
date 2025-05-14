@@ -6,7 +6,7 @@ import RoleSwitcher from '@/components/RoleSwitcher';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'YardBase CRM',
+  title: 'GreenLead',
   description: 'Landscaping business management system',
 };
 

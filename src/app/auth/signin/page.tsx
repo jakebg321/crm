@@ -62,7 +62,7 @@ export default function SignInPage() {
         }}
       >
         <Typography variant="h4" fontWeight={700} mb={2} color="primary">
-          YardBase CRM
+          GreenLead
         </Typography>
         <Typography variant="h6" mb={3} color="text.secondary">
           Sign in to your account
