@@ -64,6 +64,8 @@ interface ScheduleToolbarProps {
     searchTerm?: string;
   };
   setFilters: (filters: any) => void;
+  toggleStaffPanel?: () => void;
+  showStaffPanel?: boolean;
 }
 
 const ScheduleToolbar = ({
@@ -77,7 +79,9 @@ const ScheduleToolbar = ({
   users,
   clients,
   filters,
-  setFilters
+  setFilters,
+  toggleStaffPanel,
+  showStaffPanel
 }: ScheduleToolbarProps) => {
   const theme = useTheme();
   const [dateMenuAnchor, setDateMenuAnchor] = useState<null | HTMLElement>(null);
@@ -227,6 +231,24 @@ const ScheduleToolbar = ({
           >
             Route
           </Button>
+          
+          {toggleStaffPanel && (
+            <Button 
+              variant="outlined"
+              color={showStaffPanel ? "primary" : "inherit"}
+              onClick={toggleStaffPanel}
+              sx={{
+                borderColor: showStaffPanel ? theme.palette.primary.main : theme.palette.divider,
+                color: showStaffPanel ? theme.palette.primary.main : theme.palette.text.secondary,
+                '&:hover': {
+                  backgroundColor: alpha(theme.palette.primary.main, 0.05),
+                  borderColor: theme.palette.primary.main,
+                }
+              }}
+            >
+              {showStaffPanel ? "Hide Staff" : "Show Staff"}
+            </Button>
+          )}
           
           <Button 
             variant="contained"

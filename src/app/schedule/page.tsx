@@ -33,11 +33,12 @@ import {
   Delete as DeleteIcon,
   Person as PersonIcon,
   Close as CloseIcon,
+  CalendarMonth as CalendarIcon,
 } from '@mui/icons-material';
 import Layout from '@/components/Layout';
 import { format, addMonths, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, isSameDay, parseISO } from 'date-fns';
 import { alpha, useTheme } from '@mui/material/styles';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { useSession } from "next-auth/react";
 import { UserRole, JobStatus, JobType } from '@prisma/client';
@@ -54,6 +55,7 @@ import TaskForm from './components/TaskForm';
 import { ExtendedJob } from './utils/scheduleHelpers';
 
 const MotionPaper = motion.create(Paper);
+const MotionBox = motion.create(Box);
 
 interface User {
   id: string;
@@ -132,7 +134,7 @@ export default function Schedule() {
   const [routeOptimizerOpen, setRouteOptimizerOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedEmployee, setSelectedEmployee] = useState<string>('');
-  const [staffPanelOpen, setStaffPanelOpen] = useState(true);
+  const [showStaffPanel, setShowStaffPanel] = useState(false);
   const [snackbar, setSnackbar] = useState({ 
     open: false, 
     message: '', 
@@ -152,7 +154,7 @@ export default function Schedule() {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.altKey && e.key === 's') {
-        setStaffPanelOpen(prev => !prev);
+        setShowStaffPanel(prev => !prev);
       }
     };
     
@@ -200,6 +202,11 @@ export default function Schedule() {
         setOpenJobDialog(true);
       }
     }
+  };
+
+  // Toggle staff panel visibility
+  const toggleStaffPanel = () => {
+    setShowStaffPanel(prev => !prev);
   };
 
   // Handle job form submission
@@ -329,63 +336,94 @@ export default function Schedule() {
           clients={clients}
           filters={filters}
           setFilters={setFilters}
+          toggleStaffPanel={toggleStaffPanel}
+          showStaffPanel={showStaffPanel}
         />
       
         <Box sx={{ 
-          display: 'flex', 
+          position: 'relative',
           flexGrow: 1,
           height: 'calc(100% - 180px)',
           minHeight: '500px',
-          overflow: 'hidden',
-          gap: 2
+          overflow: 'hidden'
         }}>
-          {/* Staff panel */}
-          {viewType !== 'list' && (
-            <Box 
-              sx={{ 
-                width: staffPanelOpen ? 260 : 40, 
-                display: { xs: 'none', lg: 'block' },
-                overflow: 'auto',
-                transition: 'width 0.3s ease'
-              }}
-            >
-              <StaffPanel 
-                jobs={filteredJobs}
-                users={users as any}
-                currentDate={currentDate}
-                selectedEmployee={filters.employeeId}
-                setSelectedEmployee={(id) => setFilters({ ...filters, employeeId: id })}
-                openRouteOptimizer={handleOpenRouteOptimizer}
-                isCollapsed={!staffPanelOpen}
-                onToggleCollapse={() => setStaffPanelOpen(!staffPanelOpen)}
-              />
-            </Box>
-          )}
-          
-          {/* Main schedule area */}
-          <Box sx={{ 
-            flexGrow: 1, 
-            overflow: 'auto', 
-            pb: 4,
-            transition: 'all 0.3s ease'
-          }}>
-            {viewType === 'list' ? (
-              <ListView 
-                jobs={filteredJobs}
-                onJobClick={handleJobClick}
-                onEditJob={handleJobClick}
-                onDeleteJob={handleDeleteJob}
-              />
+          <AnimatePresence mode="wait">
+            {showStaffPanel ? (
+              <MotionBox
+                key="staff-panel"
+                initial={{ opacity: 0, x: -50 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -50 }}
+                transition={{ duration: 0.3, ease: "easeInOut" }}
+                sx={{ 
+                  height: '100%',
+                  width: '100%',
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  zIndex: 10
+                }}
+              >
+                <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
+                  <Button
+                    startIcon={<CalendarIcon />}
+                    onClick={toggleStaffPanel}
+                    variant="outlined"
+                    size="small"
+                  >
+                    Back to Calendar
+                  </Button>
+                </Box>
+                
+                <StaffPanel 
+                  jobs={filteredJobs}
+                  users={users as any}
+                  currentDate={currentDate}
+                  selectedEmployee={filters.employeeId}
+                  setSelectedEmployee={(id) => setFilters({ ...filters, employeeId: id })}
+                  openRouteOptimizer={handleOpenRouteOptimizer}
+                  isCollapsed={false}
+                  onToggleCollapse={toggleStaffPanel}
+                  fullWidth={true}
+                />
+              </MotionBox>
             ) : (
-              <CalendarView 
-                jobs={filteredJobs}
-                viewType={viewType}
-                currentDate={currentDate}
-                onDayClick={handleDayClick}
-                onJobClick={handleJobClick}
-              />
+              <MotionBox
+                key="calendar-view"
+                initial={{ opacity: 0, x: 50 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 50 }}
+                transition={{ duration: 0.3, ease: "easeInOut" }}
+                sx={{ 
+                  height: '100%',
+                  width: '100%',
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  zIndex: 5,
+                  overflow: 'auto',
+                  pb: 4
+                }}
+              >
+                {viewType === 'list' ? (
+                  <ListView 
+                    jobs={filteredJobs}
+                    onJobClick={handleJobClick}
+                    onEditJob={handleJobClick}
+                    onDeleteJob={handleDeleteJob}
+                  />
+                ) : (
+                  <CalendarView 
+                    jobs={filteredJobs}
+                    viewType={viewType}
+                    currentDate={currentDate}
+                    onDayClick={handleDayClick}
+                    onJobClick={handleJobClick}
+                  />
+                )}
+              </MotionBox>
             )}
-          </Box>
+          </AnimatePresence>
         </Box>
       </Box>
       
