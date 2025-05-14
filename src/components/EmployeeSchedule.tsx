@@ -21,7 +21,7 @@ import { alpha, useTheme } from '@mui/material/styles';
 import { motion } from 'framer-motion';
 import { JobStatus, JobType } from '@prisma/client';
 
-const MotionPaper = motion(Paper);
+const MotionPaper = motion.create(Paper);
 
 interface Job {
   id: string;

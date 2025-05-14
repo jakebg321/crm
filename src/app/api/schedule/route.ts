@@ -100,6 +100,10 @@ export async function GET(request: Request) {
             select: {
               id: true,
               name: true,
+              address: true,
+              city: true,
+              state: true,
+              zipCode: true
             },
           },
           assignedTo: {

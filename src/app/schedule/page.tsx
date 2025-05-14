@@ -6,10 +6,7 @@ import {
   Box, 
   Typography, 
   Paper, 
-  Grid, 
-  Button, 
-  IconButton,
-  Chip,
+  Grid,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -19,11 +16,14 @@ import {
   InputLabel,
   Select,
   MenuItem,
+  Button,
+  IconButton,
   Alert,
   Snackbar,
   Tooltip,
   Avatar,
   AvatarGroup,
+  Chip,
 } from '@mui/material';
 import { 
   ChevronLeft as ChevronLeftIcon, 
@@ -32,6 +32,7 @@ import {
   Edit as EditIcon,
   Delete as DeleteIcon,
   Person as PersonIcon,
+  Close as CloseIcon,
 } from '@mui/icons-material';
 import Layout from '@/components/Layout';
 import { format, addMonths, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, isSameDay, parseISO } from 'date-fns';
@@ -41,7 +42,18 @@ import { useRouter } from 'next/navigation';
 import { useSession } from "next-auth/react";
 import { UserRole, JobStatus, JobType } from '@prisma/client';
 
-const MotionPaper = motion(Paper);
+// Import new components
+import RouteOptimizer from './components/maps/RouteOptimizer';
+import { useScheduleData } from './hooks/useScheduleData';
+import ScheduleToolbar from './components/ScheduleToolbar';
+import CalendarView from './components/CalendarView';
+import ListView from './components/ListView';
+import StaffPanel from './components/StaffPanel';
+import JobForm from './components/JobForm';
+import TaskForm from './components/TaskForm';
+import { ExtendedJob } from './utils/scheduleHelpers';
+
+const MotionPaper = motion.create(Paper);
 
 interface User {
   id: string;
@@ -62,6 +74,10 @@ interface Job {
   client: {
     id: string;
     name: string;
+    address?: string;
+    city?: string;
+    state?: string;
+    zipCode?: string;
   } | null;
   assignedTo: {
     id: string;
@@ -77,144 +93,212 @@ interface Client {
   address: string;
 }
 
+interface Filters {
+  employeeId?: string;
+  clientId?: string;
+  jobType?: JobType;
+  jobStatus?: JobStatus;
+  searchTerm?: string;
+}
+
 export default function Schedule() {
   const theme = useTheme();
   const router = useRouter();
-  const { status } = useSession();
-  const [currentDate, setCurrentDate] = useState(new Date());
-  const [jobs, setJobs] = useState<Job[]>([]);
-  const [users, setUsers] = useState<User[]>([]);
-  const [clients, setClients] = useState<Client[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [openDialog, setOpenDialog] = useState(false);
+  const { data: session, status } = useSession();
+  
+  // Schedule data from custom hook
+  const {
+    jobs,
+    filteredJobs,
+    users,
+    clients,
+    loading,
+    error,
+    filters,
+    setFilters,
+    viewType,
+    setViewType,
+    currentDate,
+    setCurrentDate,
+    refreshData,
+    addJob,
+    updateJob,
+    deleteJob
+  } = useScheduleData();
+  
+  // UI state
+  const [openJobDialog, setOpenJobDialog] = useState(false);
+  const [openTaskDialog, setOpenTaskDialog] = useState(false);
+  const [routeOptimizerOpen, setRouteOptimizerOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedEmployee, setSelectedEmployee] = useState<string>('');
-  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
-
-  // Form state
-  const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    type: '',
-    startDate: '',
-    endDate: '',
-    price: '',
-    clientId: '',
-    assignedToId: '',
+  const [snackbar, setSnackbar] = useState({ 
+    open: false, 
+    message: '', 
+    severity: 'success' as 'success' | 'error' 
   });
+  const [editingJob, setEditingJob] = useState<ExtendedJob | null>(null);
+  const [editingTask, setEditingTask] = useState<any | null>(null);
+  const [draggedJob, setDraggedJob] = useState<ExtendedJob | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
 
-  // Fetch jobs for the current month
+  // Authentication check
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/login");
     }
   }, [status, router]);
 
+  // Update selected employee in filters
   useEffect(() => {
-    fetchJobs();
-    fetchUsers();
-    fetchClients();
-  }, [currentDate, selectedEmployee]);
-
-  const fetchJobs = async () => {
-    try {
-      const monthStart = startOfMonth(currentDate);
-      const monthEnd = endOfMonth(currentDate);
-      
-      let url = `/api/schedule?startDate=${monthStart.toISOString()}&endDate=${monthEnd.toISOString()}`;
-      if (selectedEmployee) {
-        url += `&employeeId=${selectedEmployee}`;
-      }
-      
-      const response = await fetch(url);
-      if (!response.ok) throw new Error('Failed to fetch jobs');
-      const data = await response.json();
-      setJobs(data);
-    } catch (err) {
-      setError('Failed to load schedule');
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchUsers = async () => {
-    try {
-      const response = await fetch('/api/employees');
-      if (!response.ok) throw new Error('Failed to fetch employees');
-      const data = await response.json();
-      setUsers(data);
-    } catch (err) {
-      console.error('Failed to fetch employees:', err);
-    }
-  };
-
-  const fetchClients = async () => {
-    try {
-      const response = await fetch('/api/clients');
-      if (!response.ok) throw new Error('Failed to fetch clients');
-      const data = await response.json();
-      setClients(data);
-    } catch (err) {
-      console.error('Failed to fetch clients:', err);
-    }
-  };
-
-  const handleAddJob = async () => {
-    try {
-      const response = await fetch('/api/schedule', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...formData,
-          price: formData.price ? parseFloat(formData.price) : null,
-        }),
+    if (selectedEmployee) {
+      setFilters({
+        ...filters,
+        employeeId: selectedEmployee
       });
+    }
+  }, [selectedEmployee, filters, setFilters]);
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to add job');
+  // Handle day click - open appropriate dialog
+  const handleDayClick = (date: Date) => {
+    console.log('Day clicked:', date);
+    setSelectedDate(date);
+    setEditingJob(null);
+    setEditingTask(null);
+    setOpenJobDialog(true);
+  };
+
+  // Handle edit job
+  const handleEditJob = (job: ExtendedJob) => {
+    console.log('Edit job:', job);
+    setEditingJob(job);
+    setSelectedDate(null); // Clear selected date when editing a job
+    setOpenJobDialog(true);
+  };
+
+  // Handle job click in calendar/list view
+  const handleJobClick = (jobId: string) => {
+    const job = jobs.find(j => j.id === jobId);
+    if (job) {
+      // Determine if this is a task (owner task) or regular job
+      if (job.title.startsWith('[OWNER]')) {
+        setEditingTask(job);
+        setOpenTaskDialog(true);
+      } else {
+        setEditingJob(job);
+        setOpenJobDialog(true);
       }
+    }
+  };
 
-      const newJob = await response.json();
-      setJobs(prev => [...prev, newJob]);
-      setOpenDialog(false);
-      setFormData({
-        title: '',
-        description: '',
-        type: '',
-        startDate: '',
-        endDate: '',
-        price: '',
-        clientId: '',
-        assignedToId: '',
-      });
+  // Handle drag start
+  const handleDragStart = (job: ExtendedJob, event: React.MouseEvent) => {
+    setDraggedJob(job);
+    setIsDragging(true);
+    console.log('Drag start:', job.id);
+  };
+
+  // Handle drag end
+  const handleDragEnd = (event: React.MouseEvent) => {
+    setIsDragging(false);
+    setDraggedJob(null);
+    console.log('Drag end');
+  };
+
+  // Handle drop on date
+  const handleDateDrop = (date: Date) => {
+    if (draggedJob && draggedJob.id) {
+      handleJobDrop(draggedJob.id, date);
+    }
+  };
+
+  // Handle drop on employee
+  const handleEmployeeDrop = (employeeId: string) => {
+    if (draggedJob && draggedJob.id) {
+      handleEmployeeAssign(draggedJob.id, employeeId);
+    }
+  };
+
+  // Handle job form submission
+  const handleSubmitJob = async (jobData: any) => {
+    try {
+      if (editingJob) {
+        // Update existing job
+        await updateJob(editingJob.id, jobData);
+        setSnackbar({
+          open: true,
+          message: 'Job updated successfully',
+          severity: 'success',
+        });
+      } else {
+        // Create new job
+        await addJob(jobData);
+        setSnackbar({
+          open: true,
+          message: 'Job added successfully',
+          severity: 'success',
+        });
+      }
+      setOpenJobDialog(false);
+      setEditingJob(null);
+    } catch (err) {
       setSnackbar({
         open: true,
-        message: 'Job added successfully',
-        severity: 'success',
-      });
-    } catch (err) {
-      setSnackbar({
-        open: true,
-        message: err instanceof Error ? err.message : 'Failed to add job',
+        message: `Failed to ${editingJob ? 'update' : 'add'} job: ${err}`,
         severity: 'error',
       });
     }
   };
 
-  const handleDeleteJob = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this job?')) return;
-
+  // Handle submit task
+  const handleSubmitTask = async (taskData: any) => {
     try {
-      const response = await fetch(`/api/schedule/${id}`, {
-        method: 'DELETE',
+      // Format the task data with owner flag and priority flag
+      const priority = taskData.priority || 'medium';
+      
+      let formattedTitle = `[OWNER] `;
+      if (priority) {
+        formattedTitle += `[FLAG:${priority}] `;
+      }
+      formattedTitle += taskData.title;
+      
+      const updatedTaskData = {
+        ...taskData,
+        title: formattedTitle,
+      };
+
+      if (editingTask) {
+        await updateJob(editingTask.id, updatedTaskData);
+        setSnackbar({
+          open: true,
+          message: 'Task updated successfully',
+          severity: 'success',
+        });
+      } else {
+        await addJob(updatedTaskData);
+        setSnackbar({
+          open: true,
+          message: 'Task added successfully',
+          severity: 'success',
+        });
+      }
+      
+      refreshData();
+      setOpenTaskDialog(false);
+    } catch (error) {
+      console.error('Error saving task:', error);
+      setSnackbar({
+        open: true,
+        message: `Failed to save task: ${error}`,
+        severity: 'error',
       });
+    }
+  };
 
-      if (!response.ok) throw new Error('Failed to delete job');
-
-      setJobs(prev => prev.filter(job => job.id !== id));
+  // Handle delete job
+  const handleDeleteJob = async (id: string) => {
+    try {
+      await deleteJob(id);
       setSnackbar({
         open: true,
         message: 'Job deleted successfully',
@@ -223,349 +307,217 @@ export default function Schedule() {
     } catch (err) {
       setSnackbar({
         open: true,
-        message: 'Failed to delete job',
+        message: `Failed to delete job: ${err}`,
         severity: 'error',
       });
     }
   };
 
-  const handlePreviousMonth = () => {
-    setCurrentDate(prevDate => subMonths(prevDate, 1));
-  };
-  
-  const handleNextMonth = () => {
-    setCurrentDate(prevDate => addMonths(prevDate, 1));
-  };
-  
-  const monthStart = startOfMonth(currentDate);
-  const monthEnd = endOfMonth(currentDate);
-  const daysInMonth = eachDayOfInterval({ start: monthStart, end: monthEnd });
-  
-  const getJobsForDate = (date: Date) => {
-    return jobs.filter(job => job.startDate && isSameDay(parseISO(job.startDate), date));
-  };
-  
-  const getStatusColor = (status: JobStatus) => {
-    switch (status) {
-      case JobStatus.SCHEDULED:
-        return theme.palette.info.main;
-      case JobStatus.IN_PROGRESS:
-        return theme.palette.warning.main;
-      case JobStatus.COMPLETED:
-        return theme.palette.success.main;
-      case JobStatus.CANCELLED:
-        return theme.palette.error.main;
-      default:
-        return theme.palette.grey[500];
+  // Handle job drop (for drag and drop)
+  const handleJobDrop = async (jobId: string, newDate: Date) => {
+    const job = jobs.find(j => j.id === jobId);
+    if (!job) return;
+    
+    try {
+      // Calculate new end date based on duration
+      let newEndDate = null;
+      if (job.startDate && job.endDate) {
+        const startDate = new Date(job.startDate);
+        const endDate = new Date(job.endDate);
+        const duration = endDate.getTime() - startDate.getTime();
+        
+        newEndDate = new Date(newDate.getTime() + duration);
+      }
+      
+      await updateJob(jobId, {
+        startDate: newDate.toISOString(),
+        endDate: newEndDate ? newEndDate.toISOString() : null
+      });
+      
+      setSnackbar({
+        open: true,
+        message: 'Job rescheduled successfully',
+        severity: 'success',
+      });
+    } catch (err) {
+      setSnackbar({
+        open: true,
+        message: `Failed to reschedule job: ${err}`,
+        severity: 'error',
+      });
     }
   };
 
-  const handleDayClick = (date: Date) => {
-    setSelectedDate(date);
-    setFormData(prev => ({
-      ...prev,
-      startDate: format(date, "yyyy-MM-dd'T'HH:mm"),
-    }));
-    setOpenDialog(true);
+  // Handle employee assignment
+  const handleEmployeeAssign = async (jobId: string, employeeId: string) => {
+    try {
+      await updateJob(jobId, { assignedToId: employeeId });
+      
+      setSnackbar({
+        open: true,
+        message: 'Job assigned successfully',
+        severity: 'success',
+      });
+    } catch (err) {
+      setSnackbar({
+        open: true,
+        message: `Failed to assign job: ${err}`,
+        severity: 'error',
+      });
+    }
+  };
+
+  // Handle opening route optimizer
+  const handleOpenRouteOptimizer = () => {
+    setRouteOptimizerOpen(true);
+  };
+
+  // Handle closing route optimizer
+  const handleCloseRouteOptimizer = () => {
+    setRouteOptimizerOpen(false);
   };
 
   if (status === "loading") return <div>Loading...</div>;
 
   return (
     <Layout>
-      <Box
-        component={motion.div}
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        sx={{ mb: 4 }}
-      >
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-          <Typography 
-            variant="h4"
-            sx={{ 
-              fontWeight: 700, 
-              color: theme.palette.text.primary
-            }}
-          >
-            Schedule
-          </Typography>
-          <Box sx={{ display: 'flex', gap: 2 }}>
-            <FormControl sx={{ minWidth: 200 }}>
-              <InputLabel>Filter by Employee</InputLabel>
-              <Select
-                value={selectedEmployee}
-                label="Filter by Employee"
-                onChange={(e) => setSelectedEmployee(e.target.value)}
-                displayEmpty
-              >
-                <MenuItem value="">All Employees</MenuItem>
-                {users.map((user) => (
-                  <MenuItem key={user.id} value={user.id}>
-                    {user.name}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            <Button 
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={() => {
-                setSelectedDate(null);
-                setOpenDialog(true);
-              }}
-              sx={{
-                boxShadow: `0px 4px 12px ${alpha(theme.palette.primary.main, 0.15)}`,
-                '&:hover': {
-                  transform: 'translateY(-2px)',
-                  boxShadow: `0px 6px 16px ${alpha(theme.palette.primary.main, 0.2)}`,
-                }
-              }}
-            >
-              New Job
-            </Button>
+      <Box sx={{ height: 'calc(100vh - 80px)', display: 'flex', flexDirection: 'column' }}>
+        <ScheduleToolbar 
+          currentDate={currentDate}
+          setCurrentDate={setCurrentDate}
+          viewType={viewType}
+          setViewType={setViewType}
+          openNewJobDialog={() => {
+            setEditingJob(null);
+            setOpenJobDialog(true);
+          }}
+          openNewTaskDialog={() => {
+            setEditingTask(null);
+            setOpenTaskDialog(true);
+          }}
+          openRouteOptimizer={handleOpenRouteOptimizer}
+          users={users as any}
+          clients={clients}
+          filters={filters}
+          setFilters={setFilters}
+        />
+      
+        <Box sx={{ 
+          display: 'flex', 
+          flexGrow: 1,
+          height: 'calc(100% - 100px)',
+          gap: 2
+        }}>
+          {/* Staff panel */}
+          {viewType !== 'list' && (
+            <Box sx={{ width: 260, display: { xs: 'none', lg: 'block' } }}>
+              <StaffPanel 
+                jobs={filteredJobs}
+                users={users as any}
+                currentDate={currentDate}
+                selectedEmployee={filters.employeeId}
+                setSelectedEmployee={(id) => setFilters({ ...filters, employeeId: id })}
+                onDrop={handleEmployeeDrop}
+                isDragging={isDragging}
+                openRouteOptimizer={handleOpenRouteOptimizer}
+              />
+            </Box>
+          )}
+          
+          {/* Main schedule area */}
+          <Box sx={{ flexGrow: 1, overflow: 'hidden' }}>
+            {viewType === 'list' ? (
+              <ListView 
+                jobs={filteredJobs}
+                onJobClick={handleJobClick}
+                onEditJob={handleJobClick}
+                onDeleteJob={handleDeleteJob}
+                onDragStart={handleDragStart}
+                onDragEnd={handleDragEnd}
+              />
+            ) : (
+              <CalendarView 
+                jobs={filteredJobs}
+                viewType={viewType}
+                currentDate={currentDate}
+                onDayClick={handleDayClick}
+                onJobClick={handleJobClick}
+                onDragStart={handleDragStart}
+                onDragEnd={handleDragEnd}
+                onDrop={handleDateDrop}
+                isDragging={isDragging}
+                draggedJob={draggedJob}
+              />
+            )}
           </Box>
         </Box>
-
-        <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-          <IconButton onClick={handlePreviousMonth}>
-            <ChevronLeftIcon />
-          </IconButton>
-          <Typography variant="h6" sx={{ mx: 2 }}>
-            {format(currentDate, 'MMMM yyyy')}
-          </Typography>
-          <IconButton onClick={handleNextMonth}>
-            <ChevronRightIcon />
-          </IconButton>
-        </Box>
-
-        <Grid container spacing={1}>
-          {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
-            <Grid item xs={12/7} key={day}>
-              <Box 
-                sx={{ 
-                  textAlign: 'center', 
-                  p: 1,
-                  fontWeight: 600,
-                  color: theme.palette.text.secondary
-                }}
-              >
-                {day}
-              </Box>
-            </Grid>
-          ))}
-          
-          {daysInMonth.map((day, i) => {
-            const dayJobs = getJobsForDate(day);
-            const isCurrentMonth = isSameMonth(day, currentDate);
-            const isCurrentDay = isToday(day);
-            
-            return (
-              <Grid item xs={12/7} key={i}>
-                <MotionPaper
-                  whileHover={{ scale: 1.02 }}
-                  sx={{
-                    p: 1,
-                    minHeight: 120,
-                    cursor: 'pointer',
-                    bgcolor: isCurrentDay 
-                      ? alpha(theme.palette.primary.main, 0.1)
-                      : isCurrentMonth 
-                        ? theme.palette.background.paper 
-                        : alpha(theme.palette.grey[500], 0.1),
-                    border: isCurrentDay ? `2px solid ${theme.palette.primary.main}` : 'none',
-                  }}
-                  onClick={() => handleDayClick(day)}
-                >
-                  <Typography
-                    variant="body2"
-                    sx={{
-                      color: isCurrentDay 
-                        ? theme.palette.primary.main 
-                        : isCurrentMonth 
-                          ? theme.palette.text.primary 
-                          : theme.palette.text.disabled,
-                      fontWeight: isCurrentDay ? 700 : 400,
-                    }}
-                  >
-                    {format(day, 'd')}
-                  </Typography>
-                  
-                  <Box sx={{ mt: 1 }}>
-                    {dayJobs.map((job) => (
-                      <Tooltip 
-                        key={job.id}
-                        title={
-                          <Box>
-                            <Typography variant="subtitle2">{job.title}</Typography>
-                            {job.assignedTo && (
-                              <Typography variant="caption">
-                                Assigned to: {job.assignedTo.name}
-                              </Typography>
-                            )}
-                          </Box>
-                        }
-                      >
-                        <Chip
-                          label={job.title}
-                          size="small"
-                          sx={{
-                            mb: 0.5,
-                            width: '100%',
-                            justifyContent: 'flex-start',
-                            bgcolor: getStatusColor(job.status),
-                            color: 'white',
-                            '&:hover': {
-                              bgcolor: alpha(getStatusColor(job.status), 0.8),
-                            },
-                          }}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            router.push(`/jobs/${job.id}`);
-                          }}
-                        />
-                      </Tooltip>
-                    ))}
-                  </Box>
-                </MotionPaper>
-              </Grid>
-            );
-          })}
-        </Grid>
-
-        <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="sm" fullWidth>
-          <DialogTitle>
-            {selectedDate ? `Add Job for ${format(selectedDate, 'MMMM d, yyyy')}` : 'Add New Job'}
-          </DialogTitle>
-          <DialogContent>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 2 }}>
-              <TextField
-                label="Title"
-                value={formData.title}
-                onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                required
-              />
-              <TextField
-                label="Description"
-                multiline
-                rows={3}
-                value={formData.description}
-                onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                helperText="Optional"
-              />
-              <FormControl>
-                <InputLabel>Type</InputLabel>
-                <Select
-                  value={formData.type}
-                  label="Type"
-                  onChange={(e) => setFormData(prev => ({ ...prev, type: e.target.value }))}
-                  displayEmpty
-                >
-                  <MenuItem value=""><em>None</em></MenuItem>
-                  {Object.values(JobType).map((type) => (
-                    <MenuItem key={type} value={type}>
-                      {type.replace(/_/g, ' ')}
-                    </MenuItem>
-                  ))}
-                </Select>
-                <Typography variant="caption" color="text.secondary">Optional</Typography>
-              </FormControl>
-              
-              <TextField
-                label="Start Date"
-                type="datetime-local"
-                value={formData.startDate}
-                onChange={(e) => setFormData(prev => ({ ...prev, startDate: e.target.value }))}
-                InputLabelProps={{ shrink: true }}
-                helperText="Optional"
-              />
-              <TextField
-                label="End Date"
-                type="datetime-local"
-                value={formData.endDate}
-                onChange={(e) => setFormData(prev => ({ ...prev, endDate: e.target.value }))}
-                InputLabelProps={{ shrink: true }}
-                helperText="Optional"
-              />
-              <TextField
-                label="Price"
-                type="number"
-                value={formData.price}
-                onChange={(e) => setFormData(prev => ({ ...prev, price: e.target.value }))}
-                helperText="Optional"
-              />
-              <FormControl fullWidth>
-                <InputLabel>Client</InputLabel>
-                <Select
-                  value={formData.clientId}
-                  label="Client"
-                  onChange={(e) => setFormData(prev => ({ ...prev, clientId: e.target.value }))}
-                  displayEmpty
-                >
-                  <MenuItem value=""><em>None</em></MenuItem>
-                  {clients.map((client) => (
-                    <MenuItem key={client.id} value={client.id}>
-                      {client.name}
-                    </MenuItem>
-                  ))}
-                </Select>
-                <Typography variant="caption" color="text.secondary">Optional</Typography>
-              </FormControl>
-              <FormControl fullWidth>
-                <InputLabel>Assign To</InputLabel>
-                <Select
-                  value={formData.assignedToId}
-                  label="Assign To"
-                  onChange={(e) => setFormData(prev => ({ ...prev, assignedToId: e.target.value }))}
-                  displayEmpty
-                >
-                  <MenuItem value=""><em>None</em></MenuItem>
-                  {users.map((user) => (
-                    <MenuItem key={user.id} value={user.id}>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <Avatar sx={{ width: 24, height: 24 }}>
-                          <PersonIcon />
-                        </Avatar>
-                        <Box>
-                          <Typography variant="body2">{user.name}</Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            {user.role}
-                          </Typography>
-                        </Box>
-                      </Box>
-                    </MenuItem>
-                  ))}
-                </Select>
-                <Typography variant="caption" color="text.secondary">Optional</Typography>
-              </FormControl>
-            </Box>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setOpenDialog(false)}>Cancel</Button>
-            <Button 
-              variant="contained" 
-              onClick={handleAddJob}
-              disabled={!formData.title}
-            >
-              Add Job
-            </Button>
-          </DialogActions>
-        </Dialog>
-
-        <Snackbar
-          open={snackbar.open}
-          autoHideDuration={6000}
-          onClose={() => setSnackbar(prev => ({ ...prev, open: false }))}
-        >
-          <Alert 
-            onClose={() => setSnackbar(prev => ({ ...prev, open: false }))} 
-            severity={snackbar.severity}
-            sx={{ width: '100%' }}
-          >
-            {snackbar.message}
-          </Alert>
-        </Snackbar>
       </Box>
+      
+      {/* Job Form */}
+      <JobForm 
+        open={openJobDialog}
+        onClose={() => setOpenJobDialog(false)}
+        onSubmit={handleSubmitJob}
+        initialData={editingJob}
+        users={users}
+        clients={clients}
+        selectedDate={selectedDate}
+        allJobs={jobs}
+        isEdit={!!editingJob}
+      />
+      
+      {/* Task Form */}
+      <TaskForm 
+        open={openTaskDialog}
+        onClose={() => setOpenTaskDialog(false)}
+        onSubmit={handleSubmitTask}
+        initialData={editingTask}
+        users={users}
+        selectedDate={selectedDate}
+        isEdit={!!editingTask}
+      />
+
+      {/* Route Optimizer Dialog */}
+      <Dialog
+        open={routeOptimizerOpen}
+        onClose={handleCloseRouteOptimizer}
+        fullWidth
+        maxWidth="lg"
+        sx={{
+          '& .MuiDialog-paper': {
+            height: '90vh',
+          }
+        }}
+      >
+        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 2 }}>
+          <Typography variant="h6">Route Optimization</Typography>
+          <IconButton onClick={handleCloseRouteOptimizer}>
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent dividers sx={{ p: 0 }}>
+          <RouteOptimizer
+            jobs={jobs}
+            employees={users}
+            currentDate={currentDate}
+          />
+        </DialogContent>
+      </Dialog>
+      
+      {/* Snackbar for notifications */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+      >
+        <Alert 
+          onClose={() => setSnackbar({ ...snackbar, open: false })} 
+          severity={snackbar.severity} 
+          sx={{ width: '100%' }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Layout>
   );
 } 

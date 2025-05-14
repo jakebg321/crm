@@ -22,6 +22,8 @@ model User {
   savedItems      SavedItem[] @relation("UserSavedItems")
   estimateTemplates EstimateTemplate[] @relation("UserEstimateTemplates")
   settings        UserSettings?
+  assignedTasks   Task[]     @relation("AssignedTasksTo")
+  createdTasks    Task[]     @relation("CreatedTasksBy")
 }
 
 model Client {
@@ -60,6 +62,22 @@ model Job {
   createdBy    User      @relation("CreatedBy", fields: [createdById], references: [id])
   estimate     Estimate? @relation(fields: [estimateId], references: [id])
   notes        Note[]
+}
+
+model Task {
+  id           String     @id @default(cuid())
+  title        String
+  description  String?
+  status       TaskStatus @default(PENDING)
+  priority     Priority   @default(MEDIUM)
+  startDate    DateTime
+  endDate      DateTime?
+  assignedToId String?
+  createdById  String
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  assignedTo   User?      @relation("AssignedTasksTo", fields: [assignedToId], references: [id])
+  createdBy    User       @relation("CreatedTasksBy", fields: [createdById], references: [id])
 }
 
 model Estimate {
@@ -159,6 +177,20 @@ enum JobStatus {
   IN_PROGRESS
   COMPLETED
   CANCELLED
+}
+
+enum TaskStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
 }
 
 enum JobType {

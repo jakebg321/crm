@@ -1,6 +1,6 @@
 # GreenLead – Project Overview & Developer Onboarding Guide
 
-_Last updated: 2024-06-21_
+_Last updated: 2024-07-10_
 
 ---
 
@@ -17,6 +17,7 @@ GreenLead is a modern customer relationship management system built specifically
 - **Type Safety:** TypeScript throughout, custom types for session/user
 - **Deployment:** Render (web service + PostgreSQL database)
 - **Project Structure:** All code and config are inside the `/crm` folder
+- **Maps Integration:** Google Maps API for route optimization
 
 ---
 
@@ -26,9 +27,12 @@ GreenLead is a modern customer relationship management system built specifically
 - Middleware-based authentication routing
 - Role-based user model (Admin, Manager, Staff)
 - Job, client, and estimate management (CRUD)
-- Scheduling/calendar with job assignment and filtering by employee
+- Enhanced scheduling with multiple calendar views and drag-and-drop capabilities
+- Route optimization using Google Maps API for daily job scheduling
+- Staff overview panel with workload visualization and conflict detection
 - Employee management (list, add, edit, delete)
 - Job notes system (CRUD, inline editing)
+- Owner task flagging with customizable color coding
 - Estimates module with multi-step creation workflow
 - Materials management with categorization and bulk operations
 - Saved items system for quick estimate creation
@@ -56,7 +60,8 @@ GreenLead is a modern customer relationship management system built specifically
 - Authentication flow with protected routes and redirects
 - Admins can manage all data
 - Employees can view their assigned jobs and notes
-- Schedule/calendar supports job assignment and filtering by employee
+- Enhanced schedule/calendar with multiple views and drag-and-drop functionality
+- Route optimization for daily jobs using Google Maps API
 - Complete estimates management system with materials catalog
 - Streamlined client creation within the estimate workflow
 - Email system for sending estimates as PDF attachments
@@ -66,11 +71,36 @@ GreenLead is a modern customer relationship management system built specifically
 
 ## 🛠️ Recent Improvements
 
+### Enhanced Scheduling System
+- **Multiple Calendar Views:** Implemented daily, weekly, monthly, and list view options
+- **Staff Overview Panel:** Added visualized workload display and employee allocation
+- **Drag-and-Drop Functionality:** Jobs can be easily rescheduled through drag interactions
+- **Conflict Detection:** System automatically detects overlapping schedules and warns users
+- **Search and Filtering:** Enhanced search capabilities by employee, client, or job type
+- **Owner Task Flagging:** Added ability to flag tasks for business owner attention with color coding
+- **Visual Enhancements:** Improved calendar UI with clearer job indicators and status coloring
+- **Date Navigation Menu:** Added quick date navigation with Today, Previous/Next Week/Month options
+- **Employee Filtering:** Enhanced Staff Panel to distinguish between employees with jobs and available staff
+- **Direct Route Viewing:** Added buttons to quickly view routes for specific employees
+
+### Route Optimization
+- **Google Maps Integration:** Implemented Google Maps API for route planning and optimization
+- **Daily Route Generation:** Auto-generates optimal routes for daily job schedules 
+- **Job Sequencing:** Intelligently orders jobs to minimize travel time between locations
+- **Map Visualization:** Visual representation of routes with job markers and directions
+- **Distance and Time Estimation:** Calculates estimated travel time between jobs
+- **Driver Instructions:** Provides turn-by-turn directions for field staff
+- **Schedule Adjustments:** Allows manual reordering of jobs with route recalculation
+- **Multiple Crew Support:** Handles multiple crews with separate optimized routes
+- **Employee-Specific Routes:** Added ability to view routes for specific employees
+- **Enhanced Date Selection:** Improved date selection in the RouteOptimizer component
+
 ### Deployment & Infrastructure
 - **Render Deployment:** Successfully deployed to Render's cloud platform
 - **Database Setup:** PostgreSQL database configured and migrated on Render
 - **Environment Configuration:** Set up environment variables for production
 - **Authentication Security:** Properly configured NextAuth.js for production
+- **API Key Management:** Added secure handling of Google Maps API keys
 
 ### Authentication & Routing
 - **Public Homepage:** Created marketing landing page for unauthenticated users
@@ -78,27 +108,17 @@ GreenLead is a modern customer relationship management system built specifically
 - **Middleware Implementation:** Added NextAuth middleware for route protection
 - **Session Management:** Enhanced session handling and role-based access
 
-### Branding Update
-- **Rebranding:** Changed name from "YardBase CRM" to "GreenLead" throughout the application
-- **Theme Updates:** Updated color scheme to green palette (#2a724a) fitting the brand
-- **UI Consistency:** Ensured consistent branding across all components and pages
-- **Typography & Colors:** Adjusted typography and colors for better brand identity
-
 ### UI/UX Enhancements
 - **Fixed Navigation Integration:** Properly integrated navigation component with all pages
 - **Layout Improvements:** Corrected spacing, padding, and margins to prevent content overlap
-- **Card Interactivity:** Added hover effects and proper click handling to estimate cards
+- **Card Interactivity:** Added hover effects and proper click handling to cards
 - **Action Button Handling:** Fixed action buttons to prevent triggering card clicks
 - **User Profile Integration:** Ensured proper spacing for user profile dropdown
 - **Empty States:** Added proper handling for empty states and loading conditions
 - **Responsive Design:** Improved mobile and desktop layouts across all interfaces
-
-### Estimate System Upgrades
-- **PDF Generation:** Implemented PDF generation for estimates
-- **Email Functionality:** Added ability to email estimates directly to clients
-- **Status Management:** Automatic status transitions when sending estimates
-- **Duplicate Function:** Ability to duplicate existing estimates
-- **Search & Filter:** Enhanced search and filtering capabilities
+- **Enhanced Staff Panel:** Visual distinction between staff with and without jobs
+- **Schedule Toolbar:** Added date navigation menu with quick access options
+- **Drag-and-Drop Improvements:** Enhanced drag-and-drop for job scheduling and assignment
 
 ### Technical Improvements
 - **DOM Validation:** Fixed DOM nesting validation errors in components
@@ -106,6 +126,9 @@ GreenLead is a modern customer relationship management system built specifically
 - **Form Data Persistence:** Implemented form data persistence during navigation
 - **API Robustness:** Enhanced error handling and validation in API endpoints
 - **Type Safety:** Improved TypeScript typing throughout the application
+- **Infinite Update Loop Fix:** Resolved rendering issues in the JobForm component
+- **Type Compatibility:** Fixed issues between Job and ExtendedJob types
+- **State Update Typing:** Improved typing for setFilters function to handle state updates properly
 
 ## 🛠️ What Needs Work
 - **Role-based UI:** Separate dashboards/pages for Admin, Employee, and (future) Client
@@ -114,6 +137,80 @@ GreenLead is a modern customer relationship management system built specifically
 - **Session/role propagation:** Ensure role is always present in session and available client/server-side
 - **Integration tests:** Add tests for role-based access and permissions
 - **CI/CD Pipeline:** Set up continuous integration and deployment workflow
+- **Route Optimization Enhancements:** Add traffic-aware routing and time window constraints
+
+---
+
+## 🧰 Schedule Module & Route Optimization
+
+### 1. Enhanced Scheduling Overview
+The scheduling module has been completely redesigned with these key features:
+
+- **Multiple Calendar Views:** Switch between day, week, month, and list views
+- **Staff Overview Panel:** Visual representation of employee workloads and assignments
+- **Drag-and-Drop Functionality:** Intuitive job rescheduling through drag operations
+- **Conflict Detection:** Automatic detection and warning for scheduling conflicts
+- **Owner Task Flagging:** Mark tasks specifically for owner attention with priority flags
+- **Custom Flag Colors:** Color-code tasks (red, orange, green, blue, purple) by priority or category
+- **Search and Filter:** Comprehensive filtering by employee, job type, status, and date range
+- **Quick Date Navigation:** Enhanced date menu with Today, Previous/Next Week/Month options
+- **Employee Status Visualization:** Visual distinction between employees with jobs and available staff
+- **Direct Route Access:** Buttons to immediately view route for specific employees
+
+### 2. Schedule Components
+
+The enhanced schedule system uses a modular component architecture:
+
+- **`scheduleHelpers.ts`:** Utility functions for date manipulation and job handling
+- **`useScheduleData.tsx`:** Custom hook for centralized schedule data management
+- **`useDragDrop.tsx`:** Hook implementing drag-and-drop functionality
+- **`ScheduleToolbar.tsx`:** Controls for view switching, date navigation, and filtering
+- **`StaffPanel.tsx`:** Sidebar showing employee workload and allocation
+- **`CalendarView.tsx`:** Container for day, week, and month calendar views
+- **`ListView.tsx`:** Alternative tabular view of scheduled jobs
+- **`JobForm.tsx`:** Enhanced job creation/editing with owner task flagging
+
+### 3. Owner Task Flagging
+
+A new feature allows flagging tasks specifically for owner attention:
+
+- **Flag Checkbox:** Simple toggle to mark a task for owner attention
+- **Color Coding:** Select from color options (red, orange, green, blue, purple)
+- **Special Formatting:** Flagged tasks display with "[OWNER]" prefix and color indicator
+- **Priority Visibility:** Flagged tasks stand out in all calendar views
+- **Filtering:** Ability to filter and view only owner tasks
+
+### 4. Route Optimization System
+
+The route optimization feature leverages Google Maps to create efficient daily routes:
+
+#### Core Features
+- **Automatic Route Planning:** Generate optimized routes for daily job schedules
+- **Multiple Driver Support:** Create separate routes for different crews/vehicles
+- **Interactive Map:** Visual display of all job locations with optimized route path
+- **Time Estimates:** Calculate travel time between jobs and total route duration
+- **Manual Adjustments:** Allow manual reordering with route recalculation
+- **Turn-by-Turn Directions:** Provide detailed driving instructions to staff
+- **Job Details Access:** View job information directly from map markers
+- **Employee-Specific Routes:** Filter routes by specific employees
+- **Enhanced Date Selection:** Improved date navigation within the route optimizer
+
+#### Technical Implementation
+- **Google Maps API Integration:** Uses Distance Matrix API and Directions Service
+- **Geocoding:** Converts client addresses to coordinates for mapping
+- **Algorithm:** Implements nearest neighbor with optimization for route efficiency
+- **State Management:** Centralized state for route data with React context
+- **Mobile Responsiveness:** Fully responsive map interface for field use on mobile devices
+- **Offline Capabilities:** Caches route data for areas with limited connectivity
+
+#### Workflow
+1. User selects a date and employee/crew
+2. System gathers all scheduled jobs for that date/crew
+3. Addresses are geocoded to map coordinates
+4. Optimization algorithm determines the most efficient job sequence
+5. Route is displayed visually on the map with sequential markers
+6. Travel time and distance estimates are calculated
+7. Directions can be exported or shared with field staff
 
 ---
 
@@ -130,7 +227,7 @@ GreenLead is a modern customer relationship management system built specifically
 ## 🧑‍💻 Developer Onboarding Steps
 1. **Clone the repo and `cd crm`**
 2. **Install dependencies:** `npm install`
-3. **Set up `.env`** with correct `DATABASE_URL`, `NEXTAUTH_SECRET`, `NEXTAUTH_URL`
+3. **Set up `.env`** with correct `DATABASE_URL`, `NEXTAUTH_SECRET`, `NEXTAUTH_URL`, and `GOOGLE_MAPS_API_KEY`
 4. **Run migrations:** `npx prisma migrate dev --name init`
 5. **Seed the database:** `npx prisma db seed` (optional)
 6. **Start the app:** `npm run dev`
@@ -148,6 +245,7 @@ GreenLead is a modern customer relationship management system built specifically
    - `DATABASE_URL` - Your Render PostgreSQL connection string
    - `NEXTAUTH_SECRET` - A secure random string for JWT signing
    - `NEXTAUTH_URL` - Your production URL (e.g., https://yourdomain.onrender.com)
+   - `GOOGLE_MAPS_API_KEY` - Your Google Maps API key with required services enabled
 5. **Deploy your application** through Render dashboard or GitHub integration
 6. **Apply database migrations:**
    ```bash
@@ -166,10 +264,12 @@ GreenLead is a modern customer relationship management system built specifically
 - **Connection errors:** Check `DATABASE_URL` and ensure PostgreSQL is running
 - **Session errors:** Ensure NextAuth.js is configured and sessions are valid
 - **API errors:** Check terminal logs for backend errors and browser console for frontend issues
+- **Google Maps issues:** Verify API key has correct services enabled (Directions, Distance Matrix, Geocoding)
 - **After schema changes:** Run migrations and regenerate Prisma client
 - **Restart dev server** after changes to `.env`, `next.config.js`, or Prisma schema
 - **UI Layout Issues:** Check component nesting, z-index values, and padding/margin properties
 - **Deployment issues:** Check Render logs for any build or runtime errors
+- **Update loop errors:** Check for object recreations in component render functions and useEffect dependencies
 
 ---
 
@@ -455,8 +555,9 @@ Planned enhancements for the estimates module:
 - Offline capabilities for remote work areas
 - More granular permissions (e.g., per-client, per-job)
 - Integration with external services (payment processors, accounting)
+- Advanced route optimization with traffic patterns and time windows
 - Automated testing and CI/CD
 
 ---
 
-# End of Log (2024-06-21)
+# End of Log (2024-07-10)
