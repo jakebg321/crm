@@ -1,11 +1,11 @@
-# YardBase CRM – Project Overview & Developer Onboarding Guide
+# GreenLead – Project Overview & Developer Onboarding Guide
 
-_Last updated: 2024-06-15_
+_Last updated: 2024-06-21_
 
 ---
 
 ## 📋 Project Summary
-YardBase CRM is a modern customer relationship management system built specifically for landscape businesses. It provides comprehensive tools for job scheduling, client management, employee management, estimates, and more. The system is designed with multi-role access (Admin, Manager, Staff, and future Client portal) with robust authentication and a modular, type-safe codebase. The application features a subscription-worthy feature set justifying a $200/month price point.
+GreenLead is a modern customer relationship management system built specifically for landscape businesses. It provides comprehensive tools for job scheduling, client management, employee management, estimates, and more. The system is designed with multi-role access (Admin, Manager, Staff, and future Client portal) with robust authentication and a modular, type-safe codebase. The application features a subscription-worthy feature set justifying a $200/month price point.
 
 ---
 
@@ -15,12 +15,15 @@ YardBase CRM is a modern customer relationship management system built specifica
 - **Database:** PostgreSQL (schema in `prisma/schema.prisma`)
 - **Authentication:** NextAuth.js (credentials provider, session-based)
 - **Type Safety:** TypeScript throughout, custom types for session/user
+- **Deployment:** Render (web service + PostgreSQL database)
 - **Project Structure:** All code and config are inside the `/crm` folder
 
 ---
 
 ## 🚀 Current Features
-- User authentication and session management
+- Public marketing homepage for unauthenticated users
+- User authentication and session management with role-based access
+- Middleware-based authentication routing
 - Role-based user model (Admin, Manager, Staff)
 - Job, client, and estimate management (CRUD)
 - Scheduling/calendar with job assignment and filtering by employee
@@ -48,6 +51,9 @@ YardBase CRM is a modern customer relationship management system built specifica
 ---
 
 ## ✅ What Works
+- Deployed to Render with proper environment configuration
+- Public landing page with professional marketing content
+- Authentication flow with protected routes and redirects
 - Admins can manage all data
 - Employees can view their assigned jobs and notes
 - Schedule/calendar supports job assignment and filtering by employee
@@ -59,6 +65,24 @@ YardBase CRM is a modern customer relationship management system built specifica
 - Defensive coding and error handling throughout
 
 ## 🛠️ Recent Improvements
+
+### Deployment & Infrastructure
+- **Render Deployment:** Successfully deployed to Render's cloud platform
+- **Database Setup:** PostgreSQL database configured and migrated on Render
+- **Environment Configuration:** Set up environment variables for production
+- **Authentication Security:** Properly configured NextAuth.js for production
+
+### Authentication & Routing
+- **Public Homepage:** Created marketing landing page for unauthenticated users
+- **Authentication Flow:** Improved login/register pages with proper redirects
+- **Middleware Implementation:** Added NextAuth middleware for route protection
+- **Session Management:** Enhanced session handling and role-based access
+
+### Branding Update
+- **Rebranding:** Changed name from "YardBase CRM" to "GreenLead" throughout the application
+- **Theme Updates:** Updated color scheme to green palette (#2a724a) fitting the brand
+- **UI Consistency:** Ensured consistent branding across all components and pages
+- **Typography & Colors:** Adjusted typography and colors for better brand identity
 
 ### UI/UX Enhancements
 - **Fixed Navigation Integration:** Properly integrated navigation component with all pages
@@ -76,11 +100,6 @@ YardBase CRM is a modern customer relationship management system built specifica
 - **Duplicate Function:** Ability to duplicate existing estimates
 - **Search & Filter:** Enhanced search and filtering capabilities
 
-### Branding & Customization
-- **Company Branding:** Added company profile with logo, colors, and fonts
-- **Theme Customization:** Implemented theme customization with saved preferences
-- **White-Label Options:** Configurable branding elements throughout the application
-
 ### Technical Improvements
 - **DOM Validation:** Fixed DOM nesting validation errors in components
 - **Tooltip Integration:** Fixed tooltip wrapper issues with Material UI
@@ -94,6 +113,7 @@ YardBase CRM is a modern customer relationship management system built specifica
 - **Client portal:** Not yet implemented
 - **Session/role propagation:** Ensure role is always present in session and available client/server-side
 - **Integration tests:** Add tests for role-based access and permissions
+- **CI/CD Pipeline:** Set up continuous integration and deployment workflow
 
 ---
 
@@ -120,6 +140,27 @@ YardBase CRM is a modern customer relationship management system built specifica
 
 ---
 
+## 🚀 Deployment Instructions
+1. **Create a Render account** if you don't have one
+2. **Set up a PostgreSQL database** on Render
+3. **Create a web service** pointing to your GitHub repository
+4. **Configure environment variables:**
+   - `DATABASE_URL` - Your Render PostgreSQL connection string
+   - `NEXTAUTH_SECRET` - A secure random string for JWT signing
+   - `NEXTAUTH_URL` - Your production URL (e.g., https://yourdomain.onrender.com)
+5. **Deploy your application** through Render dashboard or GitHub integration
+6. **Apply database migrations:**
+   ```bash
+   $env:DATABASE_URL="your_render_postgres_connection_string"
+   npx prisma migrate deploy
+   ```
+7. **Seed the database** with initial data:
+   ```bash
+   npx prisma db seed
+   ```
+
+---
+
 ## 🛠️ Troubleshooting Tips
 - **Prisma errors:** Check for missing relations, enum mismatches, or invalid data
 - **Connection errors:** Check `DATABASE_URL` and ensure PostgreSQL is running
@@ -128,6 +169,34 @@ YardBase CRM is a modern customer relationship management system built specifica
 - **After schema changes:** Run migrations and regenerate Prisma client
 - **Restart dev server** after changes to `.env`, `next.config.js`, or Prisma schema
 - **UI Layout Issues:** Check component nesting, z-index values, and padding/margin properties
+- **Deployment issues:** Check Render logs for any build or runtime errors
+
+---
+
+## 📱 Public Home Page & Authentication Flow
+
+The application now features a comprehensive authentication flow:
+
+### Public Home Page
+- **Marketing Landing Page:** Professional landing page for unauthenticated users
+- **Feature Showcase:** Highlights key features of the GreenLead platform
+- **Call-to-Action:** Clear CTAs for signup and login
+- **Responsive Design:** Fully responsive for all device sizes
+
+### Authentication Flow
+- **Protected Routes:** All authenticated routes are protected via middleware
+- **Route Redirection:**
+  - Unauthenticated users trying to access protected routes are redirected to the home page
+  - Authenticated users trying to access public routes (login/register) are redirected to the dashboard
+- **Login & Registration:**
+  - Enhanced login page with form validation
+  - Registration page with real-time field validation
+  - Form data persistence to prevent data loss
+  - Clear error messaging for authentication failures
+- **Session Management:**
+  - JWT-based authentication via NextAuth.js
+  - Role information stored in the session token
+  - Proper session expiration and renewal
 
 ---
 
@@ -390,4 +459,4 @@ Planned enhancements for the estimates module:
 
 ---
 
-# End of Log (2024-06-15)
+# End of Log (2024-06-21)
