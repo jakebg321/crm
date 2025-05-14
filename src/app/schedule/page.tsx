@@ -132,6 +132,7 @@ export default function Schedule() {
   const [routeOptimizerOpen, setRouteOptimizerOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedEmployee, setSelectedEmployee] = useState<string>('');
+  const [staffPanelOpen, setStaffPanelOpen] = useState(true);
   const [snackbar, setSnackbar] = useState({ 
     open: false, 
     message: '', 
@@ -139,8 +140,6 @@ export default function Schedule() {
   });
   const [editingJob, setEditingJob] = useState<ExtendedJob | null>(null);
   const [editingTask, setEditingTask] = useState<any | null>(null);
-  const [draggedJob, setDraggedJob] = useState<ExtendedJob | null>(null);
-  const [isDragging, setIsDragging] = useState(false);
 
   // Authentication check
   useEffect(() => {
@@ -149,6 +148,18 @@ export default function Schedule() {
     }
   }, [status, router]);
 
+  // Add keyboard shortcut to toggle staff panel
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.altKey && e.key === 's') {
+        setStaffPanelOpen(prev => !prev);
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+  
   // Update selected employee in filters
   useEffect(() => {
     if (selectedEmployee) {
@@ -188,34 +199,6 @@ export default function Schedule() {
         setEditingJob(job);
         setOpenJobDialog(true);
       }
-    }
-  };
-
-  // Handle drag start
-  const handleDragStart = (job: ExtendedJob, event: React.MouseEvent) => {
-    setDraggedJob(job);
-    setIsDragging(true);
-    console.log('Drag start:', job.id);
-  };
-
-  // Handle drag end
-  const handleDragEnd = (event: React.MouseEvent) => {
-    setIsDragging(false);
-    setDraggedJob(null);
-    console.log('Drag end');
-  };
-
-  // Handle drop on date
-  const handleDateDrop = (date: Date) => {
-    if (draggedJob && draggedJob.id) {
-      handleJobDrop(draggedJob.id, date);
-    }
-  };
-
-  // Handle drop on employee
-  const handleEmployeeDrop = (employeeId: string) => {
-    if (draggedJob && draggedJob.id) {
-      handleEmployeeAssign(draggedJob.id, employeeId);
     }
   };
 
@@ -313,60 +296,6 @@ export default function Schedule() {
     }
   };
 
-  // Handle job drop (for drag and drop)
-  const handleJobDrop = async (jobId: string, newDate: Date) => {
-    const job = jobs.find(j => j.id === jobId);
-    if (!job) return;
-    
-    try {
-      // Calculate new end date based on duration
-      let newEndDate = null;
-      if (job.startDate && job.endDate) {
-        const startDate = new Date(job.startDate);
-        const endDate = new Date(job.endDate);
-        const duration = endDate.getTime() - startDate.getTime();
-        
-        newEndDate = new Date(newDate.getTime() + duration);
-      }
-      
-      await updateJob(jobId, {
-        startDate: newDate.toISOString(),
-        endDate: newEndDate ? newEndDate.toISOString() : null
-      });
-      
-      setSnackbar({
-        open: true,
-        message: 'Job rescheduled successfully',
-        severity: 'success',
-      });
-    } catch (err) {
-      setSnackbar({
-        open: true,
-        message: `Failed to reschedule job: ${err}`,
-        severity: 'error',
-      });
-    }
-  };
-
-  // Handle employee assignment
-  const handleEmployeeAssign = async (jobId: string, employeeId: string) => {
-    try {
-      await updateJob(jobId, { assignedToId: employeeId });
-      
-      setSnackbar({
-        open: true,
-        message: 'Job assigned successfully',
-        severity: 'success',
-      });
-    } catch (err) {
-      setSnackbar({
-        open: true,
-        message: `Failed to assign job: ${err}`,
-        severity: 'error',
-      });
-    }
-  };
-
   // Handle opening route optimizer
   const handleOpenRouteOptimizer = () => {
     setRouteOptimizerOpen(true);
@@ -381,7 +310,7 @@ export default function Schedule() {
 
   return (
     <Layout>
-      <Box sx={{ height: 'calc(100vh - 80px)', display: 'flex', flexDirection: 'column' }}>
+      <Box sx={{ height: 'calc(100vh - 80px)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <ScheduleToolbar 
           currentDate={currentDate}
           setCurrentDate={setCurrentDate}
@@ -405,35 +334,47 @@ export default function Schedule() {
         <Box sx={{ 
           display: 'flex', 
           flexGrow: 1,
-          height: 'calc(100% - 100px)',
+          height: 'calc(100% - 180px)',
+          minHeight: '500px',
+          overflow: 'hidden',
           gap: 2
         }}>
           {/* Staff panel */}
           {viewType !== 'list' && (
-            <Box sx={{ width: 260, display: { xs: 'none', lg: 'block' } }}>
+            <Box 
+              sx={{ 
+                width: staffPanelOpen ? 260 : 40, 
+                display: { xs: 'none', lg: 'block' },
+                overflow: 'auto',
+                transition: 'width 0.3s ease'
+              }}
+            >
               <StaffPanel 
                 jobs={filteredJobs}
                 users={users as any}
                 currentDate={currentDate}
                 selectedEmployee={filters.employeeId}
                 setSelectedEmployee={(id) => setFilters({ ...filters, employeeId: id })}
-                onDrop={handleEmployeeDrop}
-                isDragging={isDragging}
                 openRouteOptimizer={handleOpenRouteOptimizer}
+                isCollapsed={!staffPanelOpen}
+                onToggleCollapse={() => setStaffPanelOpen(!staffPanelOpen)}
               />
             </Box>
           )}
           
           {/* Main schedule area */}
-          <Box sx={{ flexGrow: 1, overflow: 'hidden' }}>
+          <Box sx={{ 
+            flexGrow: 1, 
+            overflow: 'auto', 
+            pb: 4,
+            transition: 'all 0.3s ease'
+          }}>
             {viewType === 'list' ? (
               <ListView 
                 jobs={filteredJobs}
                 onJobClick={handleJobClick}
                 onEditJob={handleJobClick}
                 onDeleteJob={handleDeleteJob}
-                onDragStart={handleDragStart}
-                onDragEnd={handleDragEnd}
               />
             ) : (
               <CalendarView 
@@ -442,11 +383,6 @@ export default function Schedule() {
                 currentDate={currentDate}
                 onDayClick={handleDayClick}
                 onJobClick={handleJobClick}
-                onDragStart={handleDragStart}
-                onDragEnd={handleDragEnd}
-                onDrop={handleDateDrop}
-                isDragging={isDragging}
-                draggedJob={draggedJob}
               />
             )}
           </Box>

@@ -33,8 +33,6 @@ interface ListViewProps {
   onJobClick: (jobId: string) => void;
   onEditJob: (jobId: string) => void;
   onDeleteJob: (jobId: string) => void;
-  onDragStart: (job: ExtendedJob, event: React.MouseEvent) => void;
-  onDragEnd: (event: React.MouseEvent) => void;
 }
 
 type Order = 'asc' | 'desc';
@@ -44,9 +42,7 @@ const ListView = ({
   jobs,
   onJobClick,
   onEditJob,
-  onDeleteJob,
-  onDragStart,
-  onDragEnd
+  onDeleteJob
 }: ListViewProps) => {
   const theme = useTheme();
   const [order, setOrder] = useState<Order>('asc');
@@ -205,8 +201,6 @@ const ListView = ({
                     cursor: 'pointer'
                   }}
                   onClick={() => onJobClick(job.id)}
-                  onMouseDown={(e) => onDragStart(job, e)}
-                  onMouseUp={onDragEnd}
                 >
                   <TableCell component="th" scope="row">
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
@@ -301,11 +295,13 @@ const ListView = ({
                           e.stopPropagation();
                           onEditJob(job.id);
                         }}
+                        sx={{ mr: 1 }}
                       >
                         <EditIcon fontSize="small" />
                       </IconButton>
                       <IconButton 
                         size="small" 
+                        color="error"
                         onClick={(e) => {
                           e.stopPropagation();
                           onDeleteJob(job.id);
@@ -320,12 +316,9 @@ const ListView = ({
             })}
             {sortedJobs.length === 0 && (
               <TableRow>
-                <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
+                <TableCell colSpan={7} align="center" sx={{ py: 3 }}>
                   <Typography variant="body1" color="text.secondary">
-                    No jobs found for the selected period.
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Try changing your filters or date range.
+                    No jobs found
                   </Typography>
                 </TableCell>
               </TableRow>

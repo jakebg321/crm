@@ -24,7 +24,9 @@ import {
   ExpandLess as ExpandLessIcon,
   RouteOutlined as RouteIcon,
   FilterList as FilterIcon,
-  ViewDay as DayViewIcon
+  ViewDay as DayViewIcon,
+  ChevronLeft as ChevronLeftIcon,
+  ChevronRight as ChevronRightIcon
 } from '@mui/icons-material';
 import { alpha, useTheme } from '@mui/material/styles';
 import { motion } from 'framer-motion';
@@ -45,9 +47,9 @@ interface StaffPanelProps {
   currentDate: Date;
   selectedEmployee: string | undefined;
   setSelectedEmployee: (id: string | undefined) => void;
-  onDrop: (employeeId: string) => void;
-  isDragging: boolean;
   openRouteOptimizer?: () => void;
+  isCollapsed?: boolean;
+  onToggleCollapse?: () => void;
 }
 
 const StaffPanel = ({ 
@@ -56,9 +58,9 @@ const StaffPanel = ({
   currentDate,
   selectedEmployee,
   setSelectedEmployee,
-  onDrop,
-  isDragging,
-  openRouteOptimizer
+  openRouteOptimizer,
+  isCollapsed = false,
+  onToggleCollapse
 }: StaffPanelProps) => {
   const theme = useTheme();
   const [expanded, setExpanded] = React.useState<Record<string, boolean>>({});
@@ -111,13 +113,6 @@ const StaffPanel = ({
     return false;
   };
 
-  // Handle dropping a job on an employee
-  const handleDrop = (employeeId: string) => {
-    if (isDragging) {
-      onDrop(employeeId);
-    }
-  };
-
   // Get employess with jobs for the current date
   const employeesWithJobs = users.filter(user => getEmployeeJobs(user.id).length > 0);
   const employeesWithoutJobs = users.filter(user => getEmployeeJobs(user.id).length === 0);
@@ -129,6 +124,56 @@ const StaffPanel = ({
       openRouteOptimizer();
     }
   };
+
+  // If panel is collapsed, show only a minimal sidebar with a toggle button
+  if (isCollapsed) {
+    return (
+      <Box
+        component={motion.div}
+        initial={{ opacity: 0, x: -20 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.3 }}
+        sx={{
+          height: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+        }}
+      >
+        <Paper
+          elevation={2}
+          sx={{
+            height: '100%',
+            width: '100%',
+            p: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            borderRadius: 2,
+          }}
+        >
+          <IconButton 
+            onClick={onToggleCollapse}
+            sx={{ mb: 2 }}
+            aria-label="Expand panel"
+          >
+            <ChevronRightIcon />
+          </IconButton>
+          
+          <Box sx={{ 
+            writingMode: 'vertical-rl', 
+            transform: 'rotate(180deg)', 
+            textAlign: 'center',
+            mt: 2,
+            fontWeight: 600,
+            color: theme.palette.text.secondary
+          }}>
+            Staff Overview
+          </Box>
+        </Paper>
+      </Box>
+    );
+  }
 
   return (
     <Box
@@ -160,6 +205,11 @@ const StaffPanel = ({
           </Typography>
           
           <Box>
+            <Tooltip title="Collapse panel">
+              <IconButton size="small" onClick={onToggleCollapse}>
+                <ChevronLeftIcon />
+              </IconButton>
+            </Tooltip>
             <Tooltip title={expandAll ? "Collapse all" : "Expand all"}>
               <IconButton size="small" onClick={toggleExpandAll}>
                 {expandAll ? <ExpandLessIcon /> : <ExpandMoreIcon />}
@@ -214,18 +264,13 @@ const StaffPanel = ({
                           mb: 1,
                           bgcolor: isSelected 
                             ? alpha(theme.palette.primary.main, 0.08)
-                            : isDragging
-                              ? alpha(theme.palette.secondary.light, 0.1)
-                              : 'transparent',
+                            : 'transparent',
                           '&:hover': {
-                            bgcolor: isDragging
-                              ? alpha(theme.palette.secondary.main, 0.15)
-                              : alpha(theme.palette.primary.main, 0.05),
-                            cursor: isDragging ? 'copy' : 'pointer'
+                            bgcolor: alpha(theme.palette.primary.main, 0.05),
+                            cursor: 'pointer'
                           }
                         }}
                         onClick={() => setSelectedEmployee(isSelected ? undefined : user.id)}
-                        onMouseUp={() => handleDrop(user.id)}
                       >
                         <ListItemAvatar>
                           <Badge
@@ -355,7 +400,7 @@ const StaffPanel = ({
                                         </Box>
                                       }
                                       secondary={
-                                        <Typography variant="caption" color="text.secondary">
+                                        <Typography variant="caption" component="span" color="text.secondary">
                                           {job.startDate && format(new Date(job.startDate), 'h:mm a')}
                                           {job.endDate && ` - ${format(new Date(job.endDate), 'h:mm a')}`}
                                         </Typography>
@@ -412,18 +457,13 @@ const StaffPanel = ({
                         mb: 1,
                         bgcolor: isSelected 
                           ? alpha(theme.palette.primary.main, 0.08)
-                          : isDragging
-                            ? alpha(theme.palette.secondary.light, 0.1)
-                            : 'transparent',
+                          : 'transparent',
                         '&:hover': {
-                          bgcolor: isDragging
-                            ? alpha(theme.palette.secondary.main, 0.15)
-                            : alpha(theme.palette.primary.main, 0.05),
-                          cursor: isDragging ? 'copy' : 'pointer'
+                          bgcolor: alpha(theme.palette.primary.main, 0.05),
+                          cursor: 'pointer'
                         }
                       }}
                       onClick={() => setSelectedEmployee(isSelected ? undefined : user.id)}
-                      onMouseUp={() => handleDrop(user.id)}
                     >
                       <ListItemAvatar>
                         <Avatar sx={{ 
@@ -476,7 +516,7 @@ const StaffPanel = ({
                 <Button
                   variant="outlined"
                   startIcon={<RouteIcon />}
-                  onClick={() => openRouteOptimizer()}
+                  onClick={openRouteOptimizer}
                   fullWidth
                   size="small"
                 >

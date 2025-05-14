@@ -37,11 +37,6 @@ interface CalendarViewProps {
   jobs: ExtendedJob[];
   onDayClick: (date: Date) => void;
   onJobClick: (jobId: string) => void;
-  onDragStart: (job: ExtendedJob, event: React.MouseEvent) => void;
-  onDragEnd: (event: React.MouseEvent) => void;
-  onDrop: (date: Date) => void;
-  isDragging: boolean;
-  draggedJob: ExtendedJob | null;
 }
 
 const CalendarView = ({
@@ -49,12 +44,7 @@ const CalendarView = ({
   currentDate,
   jobs,
   onDayClick,
-  onJobClick,
-  onDragStart,
-  onDragEnd,
-  onDrop,
-  isDragging,
-  draggedJob
+  onJobClick
 }: CalendarViewProps) => {
   const theme = useTheme();
 
@@ -80,8 +70,8 @@ const CalendarView = ({
   // Monthly Calendar View
   const MonthView = () => {
     return (
-      <Box sx={{ overflowX: 'auto' }}>
-        <Grid container spacing={1} sx={{ minWidth: { xs: '800px', md: '100%' } }}>
+      <Box sx={{ overflowX: 'auto', overflowY: 'auto', height: '100%' }}>
+        <Grid container spacing={1} sx={{ minWidth: { xs: '1000px', md: '100%' } }}>
           {/* Day Headers */}
           {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
             <Grid item xs={12/7} key={day}>
@@ -103,10 +93,6 @@ const CalendarView = ({
             const dayJobs = getJobsForDate(jobs, day);
             const isCurrentMonth = isSameMonth(day, currentDate);
             const isCurrentDay = isToday(day);
-            const hasDraggedJob = isDragging && 
-              draggedJob && 
-              draggedJob.startDate && 
-              isSameDay(day, parseISO(draggedJob.startDate));
             
             return (
               <Grid item xs={12/7} key={i}>
@@ -116,25 +102,17 @@ const CalendarView = ({
                     p: 1,
                     minHeight: 120,
                     cursor: 'pointer',
-                    bgcolor: isDragging
-                      ? alpha(theme.palette.secondary.light, 0.05)
-                      : isCurrentDay 
-                        ? alpha(theme.palette.primary.main, 0.1)
-                        : isCurrentMonth 
-                          ? theme.palette.background.paper 
-                          : alpha(theme.palette.grey[500], 0.1),
+                    bgcolor: isCurrentDay 
+                      ? alpha(theme.palette.primary.main, 0.1)
+                      : isCurrentMonth 
+                        ? theme.palette.background.paper 
+                        : alpha(theme.palette.grey[500], 0.1),
                     border: isCurrentDay 
                       ? `2px solid ${theme.palette.primary.main}` 
-                      : hasDraggedJob && isDragging
-                        ? `2px dashed ${theme.palette.secondary.main}`
-                        : 'none',
-                    boxShadow: hasDraggedJob && isDragging 
-                      ? `0 0 0 2px ${alpha(theme.palette.secondary.main, 0.3)}`
                       : 'none',
                     transition: 'all 0.2s ease'
                   }}
                   onClick={() => onDayClick(day)}
-                  onMouseUp={() => isDragging && onDrop(day)}
                 >
                   <Typography
                     variant="body2"
@@ -158,8 +136,6 @@ const CalendarView = ({
                           key={job.id} 
                           job={job} 
                           onClick={onJobClick}
-                          onDragStart={onDragStart}
-                          onDragEnd={onDragEnd}
                         />
                       ))}
                       <Box 
@@ -183,8 +159,6 @@ const CalendarView = ({
                           key={job.id} 
                           job={job} 
                           onClick={onJobClick}
-                          onDragStart={onDragStart}
-                          onDragEnd={onDragEnd}
                         />
                       ))}
                     </Box>
@@ -201,8 +175,8 @@ const CalendarView = ({
   // Weekly Calendar View
   const WeekView = () => {
     return (
-      <Box sx={{ overflowX: 'auto' }}>
-        <Grid container spacing={1} sx={{ minWidth: { xs: '800px', md: '100%' } }}>
+      <Box sx={{ overflowX: 'auto', overflowY: 'auto', height: '100%' }}>
+        <Grid container spacing={1} sx={{ minWidth: { xs: '1000px', md: '100%' } }}>
           {/* Day Headers */}
           {days.map((day, i) => (
             <Grid item xs={12/7} key={i}>
@@ -217,7 +191,7 @@ const CalendarView = ({
                   borderBottom: `1px solid ${theme.palette.divider}`
                 }}
               >
-                <Typography variant="subtitle2">{format(day, 'EEE')}</Typography>
+                <Typography variant="subtitle2" component="span">{format(day, 'EEE')}</Typography>
                 <Typography variant="h6">{format(day, 'd')}</Typography>
               </Box>
             </Grid>
@@ -242,11 +216,6 @@ const CalendarView = ({
                 });
                 
                 const isCurrentDay = isToday(day);
-                const hasDraggedJob = isDragging && 
-                  draggedJob && 
-                  draggedJob.startDate && 
-                  isSameDay(day, parseISO(draggedJob.startDate)) &&
-                  parseISO(draggedJob.startDate).getHours() === hour;
                 
                 return (
                   <Grid item xs={12/7} key={dayIndex}>
@@ -257,33 +226,20 @@ const CalendarView = ({
                         borderBottom: `1px solid ${theme.palette.divider}`,
                         borderRight: dayIndex < 6 ? `1px solid ${theme.palette.divider}` : 'none',
                         position: 'relative',
-                        bgcolor: isDragging
-                          ? alpha(theme.palette.secondary.light, 0.05)
-                          : isCurrentDay 
-                            ? alpha(theme.palette.primary.main, 0.03)
-                            : 'transparent',
+                        bgcolor: isCurrentDay 
+                          ? alpha(theme.palette.primary.main, 0.03)
+                          : 'transparent',
                         '&:hover': {
-                          bgcolor: isDragging
-                            ? alpha(theme.palette.secondary.light, 0.1)
-                            : alpha(theme.palette.primary.main, 0.05),
+                          bgcolor: isCurrentDay 
+                            ? alpha(theme.palette.primary.main, 0.05)
+                            : 'transparent',
                           cursor: 'pointer'
                         },
-                        ...(hasDraggedJob && isDragging && {
-                          border: `2px dashed ${theme.palette.secondary.main}`,
-                          boxShadow: `0 0 0 2px ${alpha(theme.palette.secondary.main, 0.3)}`
-                        })
                       }}
                       onClick={() => {
                         const newDate = new Date(day);
                         newDate.setHours(hour);
                         onDayClick(newDate);
-                      }}
-                      onMouseUp={() => {
-                        if (isDragging) {
-                          const newDate = new Date(day);
-                          newDate.setHours(hour);
-                          onDrop(newDate);
-                        }
                       }}
                     >
                       {dayJobs.map((job) => (
@@ -291,8 +247,6 @@ const CalendarView = ({
                           key={job.id} 
                           job={job} 
                           onClick={onJobClick}
-                          onDragStart={onDragStart}
-                          onDragEnd={onDragEnd}
                           showTime
                         />
                       ))}
@@ -332,12 +286,6 @@ const CalendarView = ({
               return isSameDay(jobDate, currentDate) && jobDate.getHours() === hour;
             });
             
-            const hasDraggedJob = isDragging && 
-              draggedJob && 
-              draggedJob.startDate && 
-              isSameDay(currentDate, parseISO(draggedJob.startDate)) && 
-              parseISO(draggedJob.startDate).getHours() === hour;
-            
             return (
               <React.Fragment key={hour}>
                 {/* Time Column */}
@@ -358,31 +306,20 @@ const CalendarView = ({
                       height: 120,
                       borderRadius: 1,
                       borderLeft: `4px solid ${theme.palette.divider}`,
-                      bgcolor: isDragging
-                        ? alpha(theme.palette.secondary.light, 0.05)
+                      bgcolor: isToday(currentDate) 
+                        ? alpha(theme.palette.primary.main, 0.03)
                         : 'transparent',
                       '&:hover': {
-                        bgcolor: isDragging
-                          ? alpha(theme.palette.secondary.light, 0.1)
-                          : alpha(theme.palette.primary.main, 0.05),
+                        bgcolor: isToday(currentDate) 
+                          ? alpha(theme.palette.primary.main, 0.05)
+                          : 'transparent',
                         cursor: 'pointer'
                       },
-                      ...(hasDraggedJob && isDragging && {
-                        border: `2px dashed ${theme.palette.secondary.main}`,
-                        boxShadow: `0 0 0 2px ${alpha(theme.palette.secondary.main, 0.3)}`
-                      })
                     }}
                     onClick={() => {
                       const newDate = new Date(currentDate);
                       newDate.setHours(hour);
                       onDayClick(newDate);
-                    }}
-                    onMouseUp={() => {
-                      if (isDragging) {
-                        const newDate = new Date(currentDate);
-                        newDate.setHours(hour);
-                        onDrop(newDate);
-                      }
                     }}
                   >
                     {hourJobs.map((job) => (
@@ -390,8 +327,6 @@ const CalendarView = ({
                         key={job.id} 
                         job={job} 
                         onClick={onJobClick}
-                        onDragStart={onDragStart}
-                        onDragEnd={onDragEnd}
                         expanded
                       />
                     ))}
@@ -407,7 +342,12 @@ const CalendarView = ({
 
   // Render the appropriate view based on viewType
   return (
-    <Box>
+    <Box sx={{ 
+      height: '100%', 
+      width: '100%', 
+      overflow: 'auto',
+      p: 1
+    }}>
       {viewType === 'day' && <DayView />}
       {viewType === 'week' && <WeekView />}
       {viewType === 'month' && <MonthView />}
@@ -419,13 +359,11 @@ const CalendarView = ({
 interface JobChipProps {
   job: ExtendedJob;
   onClick: (jobId: string) => void;
-  onDragStart: (job: ExtendedJob, event: React.MouseEvent) => void;
-  onDragEnd: (event: React.MouseEvent) => void;
   showTime?: boolean;
   expanded?: boolean;
 }
 
-const JobChip = ({ job, onClick, onDragStart, onDragEnd, showTime = false, expanded = false }: JobChipProps) => {
+const JobChip = ({ job, onClick, showTime = false, expanded = false }: JobChipProps) => {
   const theme = useTheme();
   
   // Check for conflicts with other jobs
@@ -450,7 +388,6 @@ const JobChip = ({ job, onClick, onDragStart, onDragEnd, showTime = false, expan
   
   return (
     <MotionChip
-      className="dragging"
       label={
         expanded ? (
           <Box component="span">
@@ -494,8 +431,6 @@ const JobChip = ({ job, onClick, onDragStart, onDragEnd, showTime = false, expan
         )
       }
       size="small"
-      onMouseDown={(e) => onDragStart(job, e)}
-      onMouseUp={onDragEnd}
       onClick={(e) => {
         e.stopPropagation();
         onClick(job.id);

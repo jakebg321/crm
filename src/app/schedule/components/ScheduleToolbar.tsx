@@ -171,18 +171,26 @@ const ScheduleToolbar = ({
       sx={{ mb: 3 }}
     >
       {/* Top Row: Title, View Selector, Add Buttons */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: { xs: 'wrap', md: 'nowrap' } }}>
         <Typography 
           variant="h4"
           sx={{ 
             fontWeight: 700, 
-            color: theme.palette.text.primary
+            color: theme.palette.text.primary,
+            mb: { xs: 2, md: 0 }
           }}
         >
           Schedule
         </Typography>
 
-        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+        <Box sx={{ 
+          display: 'flex', 
+          gap: 2, 
+          alignItems: 'center', 
+          flexWrap: { xs: 'wrap', md: 'nowrap' },
+          width: { xs: '100%', md: 'auto' },
+          justifyContent: { xs: 'space-between', md: 'flex-end' }
+        }}>
           <ToggleButtonGroup
             value={viewType}
             exclusive
@@ -221,17 +229,18 @@ const ScheduleToolbar = ({
           </Button>
           
           <Button 
-            variant="outlined"
+            variant="contained"
             color="secondary"
             startIcon={<FlagIcon />}
             onClick={openNewTaskDialog}
             sx={{
-              borderColor: theme.palette.secondary.main,
-              color: theme.palette.secondary.main,
+              boxShadow: `0px 4px 12px ${alpha(theme.palette.secondary.main, 0.2)}`,
               '&:hover': {
-                backgroundColor: alpha(theme.palette.secondary.main, 0.05),
-                borderColor: theme.palette.secondary.dark,
-              }
+                transform: 'translateY(-2px)',
+                boxShadow: `0px 6px 16px ${alpha(theme.palette.secondary.main, 0.25)}`,
+              },
+              zIndex: 5,
+              position: 'relative'
             }}
           >
             New Task
