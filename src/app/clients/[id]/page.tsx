@@ -15,6 +15,7 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
+  DialogContentText,
   DialogActions,
   TextField,
   Alert,
@@ -22,6 +23,11 @@ import {
   Chip,
   Card,
   CardContent,
+  List,
+  ListItem,
+  ListItemIcon,
+  ListItemText,
+  CircularProgress,
 } from '@mui/material';
 import {
   Edit as EditIcon,
@@ -31,6 +37,10 @@ import {
   LocationOn as LocationIcon,
   CalendarToday as CalendarIcon,
   AttachMoney as MoneyIcon,
+  Warning as WarningIcon,
+  DeleteForever as DeleteForeverIcon,
+  Assignment as AssignmentIcon,
+  Description as DescriptionIcon,
 } from '@mui/icons-material';
 import { alpha, useTheme } from '@mui/material/styles';
 import { motion } from 'framer-motion';
@@ -98,6 +108,18 @@ export default function ClientDetails() {
     notes: '',
   });
 
+  const [deleteDialog, setDeleteDialog] = useState({
+    open: false,
+    clientId: '',
+    clientName: '',
+    relations: {
+      jobs: 0,
+      estimates: 0
+    },
+    loading: false,
+    requiresCascade: false
+  });
+
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/login");
@@ -108,18 +130,43 @@ export default function ClientDetails() {
 
   const fetchClient = async () => {
     try {
+      setLoading(true);
       const response = await fetch(`/api/clients/${params.id}`);
-      if (!response.ok) throw new Error('Failed to fetch client');
+      
+      if (response.status === 404) {
+        setError('Client not found');
+        return;
+      }
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch client');
+      }
+      
       const data = await response.json();
-      setClient(data);
+      
+      // Initialize all potentially missing properties to prevent undefined errors
+      const sanitizedClient = {
+        ...data,
+        // Ensure these arrays exist
+        jobs: data.jobs || [],
+        estimates: data.estimates || [],
+        // Ensure _count exists with default values
+        _count: {
+          jobs: data._count?.jobs || 0,
+          estimates: data._count?.estimates || 0,
+          ...(data._count || {})
+        },
+      };
+      
+      setClient(sanitizedClient);
       setFormData({
-        name: data.name,
-        email: data.email,
-        phone: data.phone,
-        address: data.address,
-        city: data.city,
-        state: data.state,
-        zipCode: data.zipCode,
+        name: data.name || '',
+        email: data.email || '',
+        phone: data.phone || '',
+        address: data.address || '',
+        city: data.city || '',
+        state: data.state || '',
+        zipCode: data.zipCode || '',
         notes: data.notes || '',
       });
     } catch (err) {
@@ -163,14 +210,35 @@ export default function ClientDetails() {
         method: 'DELETE',
       });
 
-      if (!response.ok) throw new Error('Failed to delete client');
-
-      setSnackbar({
-        open: true,
-        message: 'Client deleted successfully',
-        severity: 'success',
-      });
-      router.push('/clients');
+      if (response.ok) {
+        setSnackbar({
+          open: true,
+          message: 'Client deleted successfully',
+          severity: 'success',
+        });
+        router.push('/clients');
+        return;
+      }
+      
+      // If deletion fails due to relations, update dialog with relation counts
+      if (response.status === 400) {
+        const data = await response.json();
+        
+        if (data.requiresCascade) {
+          setDeleteDialog({
+            open: true,
+            clientId: params.id as string,
+            clientName: data.clientName || client?.name || 'this client',
+            relations: data.relations,
+            loading: false,
+            requiresCascade: true
+          });
+          return;
+        }
+      }
+      
+      // For other errors
+      throw new Error('Failed to delete client');
     } catch (err) {
       setSnackbar({
         open: true,
@@ -179,10 +247,69 @@ export default function ClientDetails() {
       });
     }
   };
+  
+  const handleConfirmCascadeDelete = async () => {
+    try {
+      setDeleteDialog(prev => ({ ...prev, loading: true }));
+      
+      // Delete with cascade=true parameter
+      const response = await fetch(`/api/clients/${params.id}?cascade=true`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) throw new Error('Failed to delete client and related records');
+
+      setSnackbar({
+        open: true,
+        message: `Client and all related records deleted successfully`,
+        severity: 'success',
+      });
+      
+      // Navigate back to clients list
+      router.push('/clients');
+    } catch (err) {
+      setSnackbar({
+        open: true,
+        message: 'Failed to delete client and related records',
+        severity: 'error',
+      });
+      setDeleteDialog(prev => ({ ...prev, loading: false }));
+    }
+  };
 
   if (loading) return <Layout><Box sx={{ p: 6, textAlign: 'center' }}>Loading...</Box></Layout>;
-  if (error) return <Layout><Box sx={{ p: 6, textAlign: 'center', color: 'error.main' }}>{error}</Box></Layout>;
-  if (!client) return <Layout><Box sx={{ p: 6, textAlign: 'center' }}>Client not found</Box></Layout>;
+  if (error) {
+    return (
+      <Layout>
+        <Box sx={{ p: 6, textAlign: 'center', color: 'error.main' }}>
+          <Typography variant="h4" gutterBottom>{error}</Typography>
+          <Button 
+            variant="contained"
+            onClick={() => router.push('/clients')}
+            sx={{ mt: 2 }}
+          >
+            Return to Clients
+          </Button>
+        </Box>
+      </Layout>
+    );
+  }
+  if (!client) {
+    return (
+      <Layout>
+        <Box sx={{ p: 6, textAlign: 'center' }}>
+          <Typography variant="h4" gutterBottom>Client not found</Typography>
+          <Button 
+            variant="contained"
+            onClick={() => router.push('/clients')}
+            sx={{ mt: 2 }}
+          >
+            Return to Clients
+          </Button>
+        </Box>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
@@ -281,7 +408,7 @@ export default function ClientDetails() {
                 <Grid item xs={6}>
                   <Box sx={{ textAlign: 'center' }}>
                     <Typography variant="h4" color="primary" sx={{ fontWeight: 700 }}>
-                      {client._count.jobs}
+                      {client._count?.jobs || 0}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
                       Total Jobs
@@ -291,7 +418,7 @@ export default function ClientDetails() {
                 <Grid item xs={6}>
                   <Box sx={{ textAlign: 'center' }}>
                     <Typography variant="h4" color="secondary" sx={{ fontWeight: 700 }}>
-                      {client._count.estimates}
+                      {client._count?.estimates || 0}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
                       Total Estimates
@@ -315,58 +442,64 @@ export default function ClientDetails() {
               <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
                 Recent Jobs
               </Typography>
-              <Grid container spacing={2}>
-                {(client.jobs || []).map((job) => (
-                  <Grid item xs={12} sm={6} md={4} key={job.id}>
-                    <Card
-                      sx={{
-                        height: '100%',
-                        boxShadow: 'none',
-                        border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
-                        '&:hover': {
-                          boxShadow: `0px 4px 12px ${alpha(theme.palette.primary.main, 0.12)}`,
-                        },
-                      }}
-                    >
-                      <CardContent>
-                        <Typography variant="h6" gutterBottom>
-                          {job.title}
-                        </Typography>
-                        <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
-                          <Chip 
-                            label={job.status} 
-                            size="small"
-                            color={
-                              job.status === 'COMPLETED' ? 'success' :
-                              job.status === 'IN_PROGRESS' ? 'primary' :
-                              job.status === 'SCHEDULED' ? 'info' :
-                              job.status === 'CANCELLED' ? 'error' :
-                              'default'
-                            }
-                          />
-                          <Chip 
-                            label={job.type} 
-                            size="small"
-                            variant="outlined"
-                          />
-                        </Box>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                          <CalendarIcon fontSize="small" color="action" />
-                          <Typography variant="body2">
-                            {new Date(job.startDate).toLocaleDateString()}
+              {client?.jobs && Array.isArray(client.jobs) && client.jobs.length > 0 ? (
+                <Grid container spacing={2}>
+                  {client.jobs.map((job) => (
+                    <Grid item xs={12} sm={6} md={4} key={job.id}>
+                      <Card
+                        sx={{
+                          height: '100%',
+                          boxShadow: 'none',
+                          border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
+                          '&:hover': {
+                            boxShadow: `0px 4px 12px ${alpha(theme.palette.primary.main, 0.12)}`,
+                          },
+                        }}
+                      >
+                        <CardContent>
+                          <Typography variant="h6" gutterBottom>
+                            {job.title}
                           </Typography>
-                        </Box>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <MoneyIcon fontSize="small" color="action" />
-                          <Typography variant="body2">
-                            ${job.price.toLocaleString()}
-                          </Typography>
-                        </Box>
-                      </CardContent>
-                    </Card>
-                  </Grid>
-                ))}
-              </Grid>
+                          <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
+                            <Chip 
+                              label={job.status} 
+                              size="small"
+                              color={
+                                job.status === 'COMPLETED' ? 'success' :
+                                job.status === 'IN_PROGRESS' ? 'primary' :
+                                job.status === 'SCHEDULED' ? 'info' :
+                                job.status === 'CANCELLED' ? 'error' :
+                                'default'
+                              }
+                            />
+                            <Chip 
+                              label={job.type} 
+                              size="small"
+                              variant="outlined"
+                            />
+                          </Box>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                            <CalendarIcon fontSize="small" color="action" />
+                            <Typography variant="body2">
+                              {job.startDate ? new Date(job.startDate).toLocaleDateString() : 'No date set'}
+                            </Typography>
+                          </Box>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <MoneyIcon fontSize="small" color="action" />
+                            <Typography variant="body2">
+                              ${typeof job.price === 'number' ? job.price.toLocaleString() : '0'}
+                            </Typography>
+                          </Box>
+                        </CardContent>
+                      </Card>
+                    </Grid>
+                  ))}
+                </Grid>
+              ) : (
+                <Typography variant="body1" color="text.secondary" sx={{ py: 2 }}>
+                  No jobs found for this client.
+                </Typography>
+              )}
             </Paper>
           </Grid>
         </Grid>
@@ -447,23 +580,97 @@ export default function ClientDetails() {
       </Dialog>
 
       {/* Delete Confirmation Dialog */}
-      <Dialog open={openDeleteDialog} onClose={() => setOpenDeleteDialog(false)}>
-        <DialogTitle>Delete Client</DialogTitle>
-        <DialogContent>
-          <Typography>
-            Are you sure you want to delete this client? This action cannot be undone.
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenDeleteDialog(false)}>Cancel</Button>
-          <Button 
-            variant="contained" 
-            color="error" 
-            onClick={handleDelete}
-          >
-            Delete
-          </Button>
-        </DialogActions>
+      <Dialog 
+        open={openDeleteDialog || deleteDialog.open} 
+        onClose={() => {
+          setOpenDeleteDialog(false);
+          if (!deleteDialog.requiresCascade) {
+            setDeleteDialog(prev => ({ ...prev, open: false }));
+          }
+        }}
+      >
+        {deleteDialog.requiresCascade ? (
+          <>
+            <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <WarningIcon color="error" />
+              Confirm Deletion
+            </DialogTitle>
+            <DialogContent>
+              <DialogContentText>
+                Are you sure you want to delete <strong>{deleteDialog.clientName}</strong>? This will also delete:
+              </DialogContentText>
+              
+              <List>
+                <ListItem>
+                  <ListItemIcon>
+                    <AssignmentIcon color="warning" />
+                  </ListItemIcon>
+                  <ListItemText primary={`${deleteDialog.relations.jobs} job${deleteDialog.relations.jobs !== 1 ? 's' : ''}`} />
+                </ListItem>
+                <ListItem>
+                  <ListItemIcon>
+                    <DescriptionIcon color="warning" />
+                  </ListItemIcon>
+                  <ListItemText primary={`${deleteDialog.relations.estimates} estimate${deleteDialog.relations.estimates !== 1 ? 's' : ''}`} />
+                </ListItem>
+                <ListItem>
+                  <ListItemIcon>
+                    <DeleteForeverIcon color="error" />
+                  </ListItemIcon>
+                  <ListItemText primary="All associated notes, photos, and other data" />
+                </ListItem>
+              </List>
+              
+              <DialogContentText sx={{ mt: 2, color: 'error.main', fontWeight: 'bold' }}>
+                This action cannot be undone.
+              </DialogContentText>
+            </DialogContent>
+            <DialogActions>
+              <Button 
+                onClick={() => setDeleteDialog(prev => ({ ...prev, open: false, requiresCascade: false }))}
+                color="inherit"
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleConfirmCascadeDelete} 
+                color="error" 
+                variant="contained"
+                startIcon={<DeleteForeverIcon />}
+                disabled={deleteDialog.loading}
+                autoFocus
+              >
+                {deleteDialog.loading ? (
+                  <>
+                    <CircularProgress size={20} color="inherit" sx={{ mr: 1 }} />
+                    Deleting...
+                  </>
+                ) : (
+                  'Delete Everything'
+                )}
+              </Button>
+            </DialogActions>
+          </>
+        ) : (
+          <>
+            <DialogTitle>Delete Client</DialogTitle>
+            <DialogContent>
+              <Typography>
+                Are you sure you want to delete this client? This action cannot be undone.
+              </Typography>
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => setOpenDeleteDialog(false)}>Cancel</Button>
+              <Button 
+                variant="contained" 
+                color="error" 
+                onClick={handleDelete}
+              >
+                Delete
+              </Button>
+            </DialogActions>
+          </>
+        )}
       </Dialog>
 
       {/* Snackbar for notifications */}

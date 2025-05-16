@@ -25,6 +25,11 @@ import {
   MenuItem,
   Alert,
   Snackbar,
+  DialogContentText,
+  List,
+  ListItem,
+  ListItemIcon,
+  ListItemText,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -36,6 +41,10 @@ import {
   ArrowForward as ArrowForwardIcon,
   Edit as EditIcon,
   Delete as DeleteIcon,
+  Warning as WarningIcon,
+  DeleteForever as DeleteForeverIcon,
+  Assignment as AssignmentIcon,
+  Description as DescriptionIcon,
 } from '@mui/icons-material';
 import Layout from '../../components/Layout';
 import { alpha, useTheme } from '@mui/material/styles';
@@ -84,6 +93,18 @@ export default function Clients() {
     state: '',
     zipCode: '',
     notes: '',
+  });
+
+  // Add these state variables
+  const [deleteDialog, setDeleteDialog] = useState({
+    open: false,
+    clientId: '',
+    clientName: '',
+    relations: {
+      jobs: 0,
+      estimates: 0
+    },
+    loading: false
   });
 
   // Fetch clients
@@ -150,21 +171,42 @@ export default function Clients() {
   };
 
   const handleDeleteClient = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this client?')) return;
-
+    // First try to delete without cascade to get relation counts
     try {
       const response = await fetch(`/api/clients/${id}`, {
         method: 'DELETE',
       });
 
-      if (!response.ok) throw new Error('Failed to delete client');
+      if (response.ok) {
+        // If it succeeds immediately, no related records existed
+        setClients(prev => prev.filter(client => client.id !== id));
+        setSnackbar({
+          open: true,
+          message: 'Client deleted successfully',
+          severity: 'success',
+        });
+        return;
+      }
 
-      setClients(prev => prev.filter(client => client.id !== id));
-      setSnackbar({
-        open: true,
-        message: 'Client deleted successfully',
-        severity: 'success',
-      });
+      // If deletion fails due to relations, show confirmation dialog
+      if (response.status === 400) {
+        const data = await response.json();
+        
+        if (data.requiresCascade) {
+          // Open confirmation dialog with relation counts
+          setDeleteDialog({
+            open: true,
+            clientId: id,
+            clientName: data.clientName || 'this client',
+            relations: data.relations,
+            loading: false
+          });
+          return;
+        }
+      }
+      
+      // For other errors
+      throw new Error('Failed to delete client');
     } catch (err) {
       setSnackbar({
         open: true,
@@ -172,6 +214,51 @@ export default function Clients() {
         severity: 'error',
       });
     }
+  };
+  
+  const handleConfirmCascadeDelete = async () => {
+    try {
+      setDeleteDialog(prev => ({ ...prev, loading: true }));
+      
+      // Delete with cascade=true parameter
+      const response = await fetch(`/api/clients/${deleteDialog.clientId}?cascade=true`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) throw new Error('Failed to delete client and related records');
+
+      // Update UI
+      setClients(prev => prev.filter(client => client.id !== deleteDialog.clientId));
+      setSnackbar({
+        open: true,
+        message: `Client and all related records deleted successfully`,
+        severity: 'success',
+      });
+      
+      // Close dialog
+      setDeleteDialog(prev => ({ 
+        ...prev, 
+        open: false, 
+        loading: false 
+      }));
+    } catch (err) {
+      setSnackbar({
+        open: true,
+        message: 'Failed to delete client and related records',
+        severity: 'error',
+      });
+      setDeleteDialog(prev => ({ ...prev, loading: false }));
+    }
+  };
+  
+  const handleCloseDeleteDialog = () => {
+    setDeleteDialog({
+      open: false,
+      clientId: '',
+      clientName: '',
+      relations: { jobs: 0, estimates: 0 },
+      loading: false
+    });
   };
 
   const filteredClients = clients.filter(client => {
@@ -480,6 +567,64 @@ export default function Clients() {
             disabled={!formData.name || !formData.email || !formData.phone || !formData.address || !formData.city || !formData.state || !formData.zipCode}
           >
             Add Client
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Add this Dialog at the end of your component */}
+      <Dialog
+        open={deleteDialog.open}
+        onClose={handleCloseDeleteDialog}
+        aria-labelledby="alert-dialog-title"
+        aria-describedby="alert-dialog-description"
+      >
+        <DialogTitle id="alert-dialog-title" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <WarningIcon color="error" />
+          Confirm Deletion
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText id="alert-dialog-description">
+            Are you sure you want to delete <strong>{deleteDialog.clientName}</strong>? This will also delete:
+          </DialogContentText>
+          
+          <List>
+            <ListItem>
+              <ListItemIcon>
+                <AssignmentIcon color="warning" />
+              </ListItemIcon>
+              <ListItemText primary={`${deleteDialog.relations.jobs} job${deleteDialog.relations.jobs !== 1 ? 's' : ''}`} />
+            </ListItem>
+            <ListItem>
+              <ListItemIcon>
+                <DescriptionIcon color="warning" />
+              </ListItemIcon>
+              <ListItemText primary={`${deleteDialog.relations.estimates} estimate${deleteDialog.relations.estimates !== 1 ? 's' : ''}`} />
+            </ListItem>
+            <ListItem>
+              <ListItemIcon>
+                <DeleteForeverIcon color="error" />
+              </ListItemIcon>
+              <ListItemText primary="All associated notes, photos, and other data" />
+            </ListItem>
+          </List>
+          
+          <DialogContentText sx={{ mt: 2, color: 'error.main', fontWeight: 'bold' }}>
+            This action cannot be undone.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseDeleteDialog} color="inherit">
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleConfirmCascadeDelete} 
+            color="error" 
+            variant="contained"
+            startIcon={<DeleteForeverIcon />}
+            disabled={deleteDialog.loading}
+            autoFocus
+          >
+            {deleteDialog.loading ? 'Deleting...' : 'Delete Everything'}
           </Button>
         </DialogActions>
       </Dialog>
