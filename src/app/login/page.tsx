@@ -157,9 +157,9 @@ export default function LoginPage() {
           <Typography variant="body2" color="text.secondary">
             <b>Demo credentials:</b>
             <br />
-            Email: <code>admin@demo.com</code>
+            Email: <code>test1@gmail.com</code>
             <br />
-            Password: <code>password</code>
+            Password: <code>test123</code>
           </Typography>
         </Box>
       </Paper>
