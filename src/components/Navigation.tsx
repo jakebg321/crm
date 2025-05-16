@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   AppBar,
   Box,
@@ -35,6 +35,10 @@ import Link from 'next/link';
 import { alpha, useTheme } from '@mui/material/styles';
 import { useSession, signOut } from 'next-auth/react';
 import { motion } from 'framer-motion';
+import { usePathname, useRouter } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
+import { fetchJobs } from '@/hooks/useJobsData';
+import { fetchClients } from '@/hooks/useClientsData';
 
 const MotionAppBar = motion.create(AppBar);
 const MotionToolbar = motion.create(Toolbar);
@@ -62,6 +66,9 @@ export default function Navigation() {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const theme = useTheme();
   const { data: session, status } = useSession();
+  const pathname = usePathname();
+  const queryClient = useQueryClient();
+  const router = useRouter();
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -80,6 +87,47 @@ export default function Navigation() {
     signOut({ callbackUrl: '/login' });
   };
 
+  // Prefetch data when hovering over menu items
+  const prefetchData = (path: string) => {
+    // Don't refetch if we're already on the page
+    if (pathname === path) return;
+
+    if (path === '/jobs' || path === '/schedule') {
+      // Prefetch jobs data
+      queryClient.prefetchQuery({
+        queryKey: ['jobs', {}],
+        queryFn: () => fetchJobs({}),
+      });
+    }
+
+    if (path === '/clients') {
+      // Prefetch clients data
+      queryClient.prefetchQuery({
+        queryKey: ['clients'],
+        queryFn: fetchClients,
+      });
+    }
+  };
+
+  // Ensure all key data is loaded on initial navigation
+  useEffect(() => {
+    // Preload common data that most pages need
+    queryClient.prefetchQuery({
+      queryKey: ['clients'],
+      queryFn: fetchClients,
+    });
+
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - 7);
+    const endDate = new Date();
+    endDate.setDate(endDate.getDate() + 30);
+
+    queryClient.prefetchQuery({
+      queryKey: ['jobs', { startDate: startDate.toISOString(), endDate: endDate.toISOString() }],
+      queryFn: () => fetchJobs({ startDate: startDate.toISOString(), endDate: endDate.toISOString() }),
+    });
+  }, [queryClient]);
+
   const drawer = (
     <div>
       <Toolbar sx={{ 
@@ -91,65 +139,99 @@ export default function Navigation() {
         </Typography>
       </Toolbar>
       <List sx={{ px: 1 }}>
-        {menuItems.map((item) => (
-          <ListItem 
-            button 
-            key={item.text} 
-            component={Link} 
-            href={item.path}
-            sx={{
-              borderRadius: 1,
-              my: 0.5,
-              px: 1.5,
-              py: 1,
-              '&:hover': {
-                backgroundColor: alpha(theme.palette.primary.main, 0.08),
-              },
-            }}
-          >
-            <ListItemIcon sx={{ color: theme.palette.primary.main, minWidth: 36 }}>
-              {item.icon}
-            </ListItemIcon>
-            <ListItemText 
-              primary={item.text} 
-              primaryTypographyProps={{ 
-                fontWeight: 500,
-                fontSize: '0.95rem',
+        {menuItems.map((item) => {
+          const isActive = pathname === item.path || pathname?.startsWith(`${item.path}/`);
+          
+          return (
+            <ListItem 
+              button 
+              key={item.text} 
+              component={Link} 
+              href={item.path}
+              prefetch={true}
+              onMouseEnter={() => prefetchData(item.path)}
+              onFocus={() => prefetchData(item.path)}
+              sx={{
+                borderRadius: 1,
+                my: 0.5,
+                px: 1.5,
+                py: 1,
+                backgroundColor: isActive 
+                  ? alpha(theme.palette.primary.main, 0.1)
+                  : 'transparent',
+                color: isActive
+                  ? theme.palette.primary.main
+                  : theme.palette.text.primary,
+                '&:hover': {
+                  backgroundColor: isActive
+                    ? alpha(theme.palette.primary.main, 0.15)
+                    : alpha(theme.palette.primary.main, 0.08),
+                },
               }}
-            />
-          </ListItem>
-        ))}
+            >
+              <ListItemIcon sx={{ 
+                color: isActive ? theme.palette.primary.main : theme.palette.text.secondary, 
+                minWidth: 36 
+              }}>
+                {item.icon}
+              </ListItemIcon>
+              <ListItemText 
+                primary={item.text} 
+                primaryTypographyProps={{ 
+                  fontWeight: isActive ? 600 : 500,
+                  fontSize: '0.95rem',
+                }}
+              />
+            </ListItem>
+          );
+        })}
       </List>
       <Divider sx={{ mx: 2, my: 1, borderColor: alpha(theme.palette.primary.main, 0.08) }} />
       <List sx={{ px: 1 }}>
-        {adminMenuItems.map((item) => (
-          <ListItem 
-            button 
-            key={item.text} 
-            component={Link} 
-            href={item.path}
-            sx={{
-              borderRadius: 1,
-              my: 0.5,
-              px: 1.5,
-              py: 1,
-              '&:hover': {
-                backgroundColor: alpha(theme.palette.primary.main, 0.08),
-              },
-            }}
-          >
-            <ListItemIcon sx={{ color: theme.palette.primary.main, minWidth: 36 }}>
-              {item.icon}
-            </ListItemIcon>
-            <ListItemText 
-              primary={item.text} 
-              primaryTypographyProps={{ 
-                fontWeight: 500,
-                fontSize: '0.95rem',
+        {adminMenuItems.map((item) => {
+          const isActive = pathname === item.path;
+          
+          return (
+            <ListItem 
+              button 
+              key={item.text} 
+              component={Link} 
+              href={item.path}
+              prefetch={true}
+              sx={{
+                borderRadius: 1,
+                my: 0.5,
+                px: 1.5,
+                py: 1,
+                backgroundColor: isActive 
+                  ? alpha(theme.palette.primary.main, 0.1)
+                  : 'transparent',
+                color: isActive
+                  ? theme.palette.primary.main
+                  : theme.palette.text.primary,
+                '&:hover': {
+                  backgroundColor: isActive
+                    ? alpha(theme.palette.primary.main, 0.15)
+                    : alpha(theme.palette.primary.main, 0.08),
+                },
               }}
-            />
-          </ListItem>
-        ))}
+            >
+              <ListItemIcon sx={{ 
+                color: isActive ? theme.palette.primary.main : theme.palette.text.secondary, 
+                minWidth: 36 
+              }}>
+                {item.icon}
+              </ListItemIcon>
+              <ListItemText 
+                primary={item.text} 
+                primaryTypographyProps={{ 
+                  fontWeight: isActive ? 600 : 500,
+                  fontSize: '0.95rem',
+                }}
+              />
+            </ListItem>
+          );
+        })}
       </List>
     </div>
   );

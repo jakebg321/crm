@@ -7,62 +7,28 @@ import { useSession } from 'next-auth/react';
 import Layout from '../../../components/Layout';
 import {
   Box, Typography, TextField, Button, MenuItem, Select, InputLabel, FormControl, Snackbar, Alert, CircularProgress,
-  Divider
+  Divider, Paper, Tab, Tabs, Grid, Chip
 } from '@mui/material';
 import { AlertColor, SelectChangeEvent } from '@mui/material';
+import { alpha, useTheme } from '@mui/material/styles';
+import { motion, AnimatePresence } from 'framer-motion';
 import JobNotes from '../components/JobNotes';
 import JobPhotos from '../components/JobPhotos';
+import { useJob, useUpdateJob } from '@/hooks/useJobsData';
+import SkeletonLoader from '@/components/SkeletonLoader';
+import { JobStatus, JobType } from '@prisma/client';
 
-const JOB_TYPES = [
-  'LAWN_MAINTENANCE',
-  'LANDSCAPE_DESIGN',
-  'TREE_SERVICE',
-  'IRRIGATION',
-  'HARDSCAPING',
-  'CLEANUP',
-  'PLANTING',
-  'FERTILIZATION',
-];
-const JOB_STATUSES = [
-  'PENDING',
-  'SCHEDULED',
-  'IN_PROGRESS',
-  'COMPLETED',
-  'CANCELLED',
-];
-
-interface Job {
-  id: string;
-  title: string;
-  description: string;
-  status: string;
-  type: string;
-  startDate: string;
-  endDate?: string;
-  price: number;
-  client: {
-    name: string;
-    address: string;
-  };
-}
-
-interface Note {
-  id: string;
-  content: string;
-  createdAt: string;
-  completed: boolean;
-  completedAt?: string;
-  createdBy: {
-    name: string;
-  };
-}
+const JOB_TYPES = Object.values(JobType);
+const JOB_STATUSES = Object.values(JobStatus);
 
 export default function JobDetails() {
   const params = useParams();
   const router = useRouter();
   const { status } = useSession();
-  const jobId = params.id;
-  const [job, setJob] = useState<Job | null>(null);
+  const theme = useTheme();
+  const jobId = params.id as string;
+  
+  const [activeTab, setActiveTab] = useState(0);
   const [form, setForm] = useState({
     title: '',
     description: '',
@@ -74,81 +40,51 @@ export default function JobDetails() {
     clientId: '',
     assignedToId: '',
   });
-  const [clients, setClients] = useState<any[]>([]);
-  const [users, setUsers] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: AlertColor }>({ open: false, message: '', severity: 'success' });
-  const [notes, setNotes] = useState<Note[]>([]);
+  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: AlertColor }>({ 
+    open: false, message: '', severity: 'success' 
+  });
 
-  // Fetch job details
+  // Authentication check
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/login");
     }
   }, [status, router]);
 
-  useEffect(() => {
-    if (status === "authenticated") {
-      fetchJobDetails();
-      fetchNotes();
-    }
-  }, [status, jobId]);
+  // Use React Query to fetch job data
+  const { 
+    data: job, 
+    isLoading, 
+    error, 
+    isError 
+  } = useJob(jobId);
 
-  const fetchJobDetails = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch(`/api/schedule/${jobId}`);
-      if (!res.ok) throw new Error('Failed to fetch job');
-      const data = await res.json();
-      setJob(data);
+  // Update form when job data is loaded
+  useEffect(() => {
+    if (job) {
       setForm({
-        title: data.title || '',
-        description: data.description || '',
-        type: data.type || '',
-        status: data.status || '',
-        startDate: data.startDate ? data.startDate.slice(0, 10) : '',
-        endDate: data.endDate ? data.endDate.slice(0, 10) : '',
-        price: data.price || '',
-        clientId: data.clientId || '',
-        assignedToId: data.assignedToId || '',
+        title: job.title || '',
+        description: job.description || '',
+        type: job.type || '',
+        status: job.status || '',
+        startDate: job.startDate ? job.startDate.slice(0, 10) : '',
+        endDate: job.endDate ? job.endDate.slice(0, 10) : '',
+        price: job.price?.toString() || '',
+        clientId: job.clientId || '',
+        assignedToId: job.assignedToId || '',
       });
-    } catch (err: any) {
-      setSnackbar({ open: true, message: err.message, severity: 'error' });
-    } finally {
-      setLoading(false);
     }
-  };
+  }, [job]);
 
-  // Fetch clients and users for dropdowns
-  useEffect(() => {
-    async function fetchClients() {
-      const res = await fetch('/api/clients');
-      if (res.ok) setClients(await res.json());
-    }
-    async function fetchUsers() {
-      const res = await fetch('/api/auth/users'); // You may need to implement this endpoint
-      if (res.ok) setUsers(await res.json());
-    }
-    fetchClients();
-    // fetchUsers(); // Uncomment if you have a users endpoint
-  }, []);
-
-  const fetchNotes = async () => {
-    try {
-      const res = await fetch(`/api/schedule/${jobId}/notes`);
-      if (!res.ok) throw new Error('Failed to fetch notes');
-      const data = await res.json();
-      setNotes(data);
-    } catch (error) {
-      console.error('Failed to fetch notes:', error);
-    }
-  };
+  // Use React Query mutation for updating the job
+  const updateJobMutation = useUpdateJob();
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setForm({ ...form, [name]: value });
   };
+  
   const handleSelectChange = (e: SelectChangeEvent<string>) => {
     const { name, value } = e.target;
     setForm({ ...form, [name as string]: value });
@@ -157,17 +93,15 @@ export default function JobDetails() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      const res = await fetch(`/api/schedule/${jobId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      await updateJobMutation.mutateAsync({
+        id: jobId,
+        data: {
           ...form,
-          price: parseFloat(form.price),
-        }),
+          price: form.price ? parseFloat(form.price) : null,
+        }
       });
-      if (!res.ok) throw new Error('Failed to update job');
+      
       setSnackbar({ open: true, message: 'Job updated successfully', severity: 'success' });
-      router.refresh();
     } catch (err: any) {
       setSnackbar({ open: true, message: err.message, severity: 'error' });
     } finally {
@@ -175,201 +109,234 @@ export default function JobDetails() {
     }
   };
 
-  const handleNoteAdd = async (jobId: string, content: string) => {
-    try {
-      const res = await fetch(`/api/schedule/${jobId}/notes`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content }),
-      });
-      if (!res.ok) throw new Error('Failed to add note');
-      const newNote = await res.json();
-      setNotes(prev => [newNote, ...prev]);
-      setSnackbar({
-        open: true,
-        message: 'Note added successfully',
-        severity: 'success'
-      });
-    } catch (error) {
-      console.error('Failed to add note:', error);
-      setSnackbar({
-        open: true,
-        message: 'Failed to add note',
-        severity: 'error'
-      });
-    }
+  const handleTabChange = (_: React.SyntheticEvent, newValue: number) => {
+    setActiveTab(newValue);
   };
 
-  const handleNoteComplete = async (jobId: string, noteId: string) => {
-    try {
-      const note = notes.find(n => n.id === noteId);
-      if (!note) return;
-
-      const res = await fetch(`/api/schedule/${jobId}/notes/${noteId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ completed: !note.completed }),
-      });
-      if (!res.ok) throw new Error('Failed to update note');
-      const updatedNote = await res.json();
-      setNotes(prev => prev.map(n => n.id === noteId ? updatedNote : n));
-    } catch (error) {
-      throw error;
-    }
-  };
-
-  const handleNoteDelete = async (jobId: string, noteId: string) => {
-    try {
-      const res = await fetch(`/api/schedule/${jobId}/notes/${noteId}`, {
-        method: 'DELETE',
-      });
-      if (!res.ok) throw new Error('Failed to delete note');
-      setNotes(prev => prev.filter(n => n.id !== noteId));
-      setSnackbar({
-        open: true,
-        message: 'Note deleted successfully',
-        severity: 'success'
-      });
-    } catch (error) {
-      throw error;
-    }
-  };
-
-  const handleNoteEdit = async (jobId: string, noteId: string, content: string) => {
-    try {
-      const res = await fetch(`/api/schedule/${jobId}/notes/${noteId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content }),
-      });
-      if (!res.ok) throw new Error('Failed to update note');
-      const updatedNote = await res.json();
-      setNotes(prev => prev.map(n => n.id === noteId ? updatedNote : n));
-      setSnackbar({
-        open: true,
-        message: 'Note updated successfully',
-        severity: 'success'
-      });
-    } catch (error) {
-      setSnackbar({
-        open: true,
-        message: 'Failed to update note',
-        severity: 'error'
-      });
-    }
-  };
-
-  if (loading) return <Layout><Box sx={{ p: 4, textAlign: 'center' }}><CircularProgress /></Box></Layout>;
-  if (!job) return <Layout><Box sx={{ p: 4 }}><Typography>Job not found.</Typography></Box></Layout>;
+  if (status === 'loading') {
+    return <CircularProgress />;
+  }
 
   return (
     <Layout>
-      <Box sx={{ maxWidth: 600, mx: 'auto', mt: 4 }}>
-        <Typography variant="h4" gutterBottom>Job Details</Typography>
-        <TextField
-          label="Title"
-          name="title"
-          value={form.title}
-          onChange={handleInputChange}
-          fullWidth
-          margin="normal"
-        />
-        <TextField
-          label="Description"
-          name="description"
-          value={form.description}
-          onChange={handleInputChange}
-          fullWidth
-          margin="normal"
-          multiline
-          rows={3}
-        />
-        <FormControl fullWidth margin="normal">
-          <InputLabel>Type</InputLabel>
-          <Select name="type" value={form.type} onChange={handleSelectChange} label="Type">
-            {JOB_TYPES.map(type => <MenuItem key={type} value={type}>{type.replace(/_/g, ' ')}</MenuItem>)}
-          </Select>
-        </FormControl>
-        <FormControl fullWidth margin="normal">
-          <InputLabel>Status</InputLabel>
-          <Select name="status" value={form.status} onChange={handleSelectChange} label="Status">
-            {JOB_STATUSES.map(status => <MenuItem key={status} value={status}>{status.replace(/_/g, ' ')}</MenuItem>)}
-          </Select>
-        </FormControl>
-        <TextField
-          label="Start Date"
-          name="startDate"
-          type="date"
-          value={form.startDate}
-          onChange={handleInputChange}
-          fullWidth
-          margin="normal"
-          InputLabelProps={{ shrink: true }}
-        />
-        <TextField
-          label="End Date"
-          name="endDate"
-          type="date"
-          value={form.endDate}
-          onChange={handleInputChange}
-          fullWidth
-          margin="normal"
-          InputLabelProps={{ shrink: true }}
-        />
-        <TextField
-          label="Price"
-          name="price"
-          type="number"
-          value={form.price}
-          onChange={handleInputChange}
-          fullWidth
-          margin="normal"
-        />
-        <FormControl fullWidth margin="normal">
-          <InputLabel>Client</InputLabel>
-          <Select name="clientId" value={form.clientId} onChange={handleSelectChange} label="Client">
-            {clients.map(client => <MenuItem key={client.id} value={client.id}>{client.name}</MenuItem>)}
-          </Select>
-        </FormControl>
-        {/* Uncomment if you have a users endpoint
-        <FormControl fullWidth margin="normal">
-          <InputLabel>Assigned To</InputLabel>
-          <Select name="assignedToId" value={form.assignedToId} onChange={handleSelectChange} label="Assigned To">
-            {users.map(user => <MenuItem key={user.id} value={user.id}>{user.name}</MenuItem>)}
-          </Select>
-        </FormControl>
-        */}
-        <Box sx={{ mt: 2, display: 'flex', gap: 2 }}>
-          <Button variant="contained" color="primary" onClick={handleSave} disabled={saving}>
-            {saving ? 'Saving...' : 'Save Changes'}
+      <Box sx={{ mb: 4 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
+          <Button 
+            variant="outlined" 
+            onClick={() => router.back()}
+            sx={{ mb: 1 }}
+          >
+            Back
           </Button>
+          <Typography 
+            variant="h4" 
+            component={motion.h1}
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+            sx={{ fontWeight: 700 }}
+          >
+            {isLoading ? 'Loading Job...' : job?.title || 'Job Details'}
+          </Typography>
+          
+          {job && (
+            <Chip 
+              label={job.status} 
+              color={
+                job.status === 'COMPLETED' ? 'success' :
+                job.status === 'IN_PROGRESS' ? 'primary' :
+                job.status === 'SCHEDULED' ? 'info' :
+                job.status === 'CANCELLED' ? 'error' : 'warning'
+              }
+              sx={{ fontWeight: 500 }}
+            />
+          )}
         </Box>
         
-        <Divider sx={{ my: 4 }} />
-        
-        <JobNotes
-          jobId={job.id}
-          notes={notes}
-          onNoteAdd={handleNoteAdd}
-          onNoteComplete={handleNoteComplete}
-          onNoteDelete={handleNoteDelete}
-          onNoteEdit={handleNoteEdit}
-        />
-        
-        <Divider sx={{ my: 4 }} />
-        
-        <JobPhotos jobId={job.id} />
-        
-        <Snackbar
-          open={snackbar.open}
-          autoHideDuration={4000}
+        {job?.client && (
+          <Typography 
+            variant="body1"
+            component={motion.p}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.3, delay: 0.1 }}
+            sx={{ color: theme.palette.text.secondary, mb: 4 }}
+          >
+            Client: {job.client.name} | Address: {job.client.address || 'No address provided'}
+          </Typography>
+        )}
+      </Box>
+
+      <Tabs 
+        value={activeTab} 
+        onChange={handleTabChange}
+        sx={{ 
+          mb: 3, 
+          borderBottom: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
+          '& .MuiTabs-indicator': {
+            height: 3,
+          }
+        }}
+      >
+        <Tab label="Details" />
+        <Tab label="Notes" />
+        <Tab label="Photos" />
+      </Tabs>
+
+      <AnimatePresence mode="wait">
+        {isLoading ? (
+          <SkeletonLoader type="job" />
+        ) : isError ? (
+          <Box sx={{ p: 3, textAlign: 'center' }}>
+            <Typography variant="h6" color="error">Error loading job</Typography>
+            <Typography variant="body2">Please try refreshing the page</Typography>
+          </Box>
+        ) : (
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2 }}
+          >
+            {activeTab === 0 && (
+              <Paper 
+                elevation={0} 
+                sx={{ 
+                  p: 3, 
+                  borderRadius: 2,
+                  border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`
+                }}
+              >
+                <Grid container spacing={3}>
+                  <Grid item xs={12}>
+                    <TextField
+                      fullWidth
+                      label="Job Title"
+                      name="title"
+                      value={form.title}
+                      onChange={handleInputChange}
+                      variant="outlined"
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <FormControl fullWidth>
+                      <InputLabel>Type</InputLabel>
+                      <Select
+                        name="type"
+                        value={form.type}
+                        onChange={handleSelectChange}
+                        label="Type"
+                      >
+                        <MenuItem value="">No Type</MenuItem>
+                        {JOB_TYPES.map(type => (
+                          <MenuItem key={type} value={type}>
+                            {type.replace('_', ' ')}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <FormControl fullWidth>
+                      <InputLabel>Status</InputLabel>
+                      <Select
+                        name="status"
+                        value={form.status}
+                        onChange={handleSelectChange}
+                        label="Status"
+                      >
+                        {JOB_STATUSES.map(status => (
+                          <MenuItem key={status} value={status}>
+                            {status.replace('_', ' ')}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      label="Start Date"
+                      name="startDate"
+                      type="date"
+                      value={form.startDate}
+                      onChange={handleInputChange}
+                      InputLabelProps={{
+                        shrink: true,
+                      }}
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      label="End Date"
+                      name="endDate"
+                      type="date"
+                      value={form.endDate}
+                      onChange={handleInputChange}
+                      InputLabelProps={{
+                        shrink: true,
+                      }}
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      label="Price"
+                      name="price"
+                      type="number"
+                      value={form.price}
+                      onChange={handleInputChange}
+                      InputProps={{
+                        startAdornment: <Box component="span" sx={{ mr: 1 }}>$</Box>,
+                      }}
+                    />
+                  </Grid>
+                  <Grid item xs={12}>
+                    <TextField
+                      fullWidth
+                      label="Description"
+                      name="description"
+                      multiline
+                      rows={4}
+                      value={form.description}
+                      onChange={handleInputChange}
+                    />
+                  </Grid>
+                  <Grid item xs={12}>
+                    <Button
+                      variant="contained"
+                      onClick={handleSave}
+                      disabled={saving || updateJobMutation.isPending}
+                      sx={{ mt: 2 }}
+                    >
+                      {saving || updateJobMutation.isPending ? <CircularProgress size={24} /> : 'Save Changes'}
+                    </Button>
+                  </Grid>
+                </Grid>
+              </Paper>
+            )}
+            
+            {activeTab === 1 && <JobNotes jobId={jobId} />}
+            
+            {activeTab === 2 && <JobPhotos jobId={jobId} />}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={4000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+      >
+        <Alert
+          severity={snackbar.severity}
           onClose={() => setSnackbar({ ...snackbar, open: false })}
         >
-          <Alert severity={snackbar.severity} onClose={() => setSnackbar({ ...snackbar, open: false })}>
-            {snackbar.message}
-          </Alert>
-        </Snackbar>
-      </Box>
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Layout>
   );
 } 

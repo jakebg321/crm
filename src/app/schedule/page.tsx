@@ -1,7 +1,7 @@
 // Schedule Page - Manages and displays job scheduling and calendar functionality
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { 
   Box, 
   Typography, 
@@ -24,6 +24,9 @@ import {
   Avatar,
   AvatarGroup,
   Chip,
+  Tab,
+  Tabs,
+  CircularProgress
 } from '@mui/material';
 import { 
   ChevronLeft as ChevronLeftIcon, 
@@ -45,55 +48,17 @@ import { UserRole, JobStatus, JobType } from '@prisma/client';
 
 // Import new components
 import RouteOptimizer from './components/maps/RouteOptimizer';
-import { useScheduleData } from './hooks/useScheduleData';
-import ScheduleToolbar from './components/ScheduleToolbar';
 import CalendarView from './components/CalendarView';
 import ListView from './components/ListView';
 import StaffPanel from './components/StaffPanel';
 import JobForm from './components/JobForm';
 import TaskForm from './components/TaskForm';
-import { ExtendedJob } from './utils/scheduleHelpers';
+import SkeletonLoader from '@/components/SkeletonLoader';
+import { useJobs, useCreateJob, useUpdateJob, useDeleteJob } from '@/hooks/useJobsData';
+import { useClients } from '@/hooks/useClientsData';
 
 const MotionPaper = motion.create(Paper);
 const MotionBox = motion.create(Box);
-
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  role: UserRole;
-}
-
-interface Job {
-  id: string;
-  title: string;
-  description: string | null;
-  type: JobType | null;
-  status: JobStatus;
-  startDate: string | null;
-  endDate: string | null;
-  price: number | null;
-  client: {
-    id: string;
-    name: string;
-    address?: string;
-    city?: string;
-    state?: string;
-    zipCode?: string;
-  } | null;
-  assignedTo: {
-    id: string;
-    name: string;
-  } | null;
-}
-
-interface Client {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  address: string;
-}
 
 interface Filters {
   employeeId?: string;
@@ -108,40 +73,110 @@ export default function Schedule() {
   const router = useRouter();
   const { data: session, status } = useSession();
   
-  // Schedule data from custom hook
-  const {
-    jobs,
-    filteredJobs,
-    users,
-    clients,
-    loading,
-    error,
-    filters,
-    setFilters,
-    viewType,
-    setViewType,
-    currentDate,
-    setCurrentDate,
-    refreshData,
-    addJob,
-    updateJob,
-    deleteJob
-  } = useScheduleData();
-  
-  // UI state
+  // State
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [viewType, setViewType] = useState<'month' | 'week' | 'day'>('month');
+  const [filters, setFilters] = useState<Filters>({});
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>('');
   const [openJobDialog, setOpenJobDialog] = useState(false);
   const [openTaskDialog, setOpenTaskDialog] = useState(false);
   const [routeOptimizerOpen, setRouteOptimizerOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [selectedEmployee, setSelectedEmployee] = useState<string>('');
   const [showStaffPanel, setShowStaffPanel] = useState(false);
   const [snackbar, setSnackbar] = useState({ 
     open: false, 
     message: '', 
     severity: 'success' as 'success' | 'error' 
   });
-  const [editingJob, setEditingJob] = useState<ExtendedJob | null>(null);
+  const [editingJob, setEditingJob] = useState<any | null>(null);
   const [editingTask, setEditingTask] = useState<any | null>(null);
+  
+  // Date range for fetching jobs
+  const dateRange = useMemo(() => {
+    let startDate, endDate;
+    
+    switch (viewType) {
+      case 'month':
+        startDate = startOfMonth(currentDate);
+        endDate = endOfMonth(currentDate);
+        break;
+      case 'week':
+        startDate = new Date(currentDate);
+        startDate.setDate(currentDate.getDate() - currentDate.getDay());
+        endDate = new Date(startDate);
+        endDate.setDate(startDate.getDate() + 6);
+        break;
+      case 'day':
+        startDate = currentDate;
+        endDate = currentDate;
+        break;
+      default:
+        startDate = startOfMonth(currentDate);
+        endDate = endOfMonth(currentDate);
+    }
+    
+    return {
+      startDate: startDate.toISOString(),
+      endDate: endDate.toISOString()
+    };
+  }, [currentDate, viewType]);
+  
+  // React Query hooks
+  const { 
+    data: jobs = [], 
+    isLoading: jobsLoading, 
+    error: jobsError 
+  } = useJobs({
+    startDate: dateRange.startDate,
+    endDate: dateRange.endDate,
+    employeeId: filters.employeeId
+  });
+  
+  const { 
+    data: clients = [], 
+    isLoading: clientsLoading 
+  } = useClients();
+  
+  const createJobMutation = useCreateJob();
+  const updateJobMutation = useUpdateJob();
+  const deleteJobMutation = useDeleteJob();
+  
+  // Filter jobs based on criteria
+  const filteredJobs = useMemo(() => {
+    return jobs.filter(job => {
+      // Filter by employee
+      if (filters.employeeId && job.assignedToId !== filters.employeeId) {
+        return false;
+      }
+      
+      // Filter by client
+      if (filters.clientId && job.clientId !== filters.clientId) {
+        return false;
+      }
+      
+      // Filter by job type
+      if (filters.jobType && job.type !== filters.jobType) {
+        return false;
+      }
+      
+      // Filter by job status
+      if (filters.jobStatus && job.status !== filters.jobStatus) {
+        return false;
+      }
+      
+      // Filter by search term
+      if (filters.searchTerm) {
+        const searchLower = filters.searchTerm.toLowerCase();
+        return (
+          job.title.toLowerCase().includes(searchLower) ||
+          (job.description && job.description.toLowerCase().includes(searchLower)) ||
+          (job.client && job.client.name.toLowerCase().includes(searchLower))
+        );
+      }
+      
+      return true;
+    });
+  }, [jobs, filters]);
 
   // Authentication check
   useEffect(() => {
@@ -164,17 +199,16 @@ export default function Schedule() {
   
   // Update selected employee in filters
   useEffect(() => {
-    if (selectedEmployee) {
+    if (selectedEmployeeId) {
       setFilters({
         ...filters,
-        employeeId: selectedEmployee
+        employeeId: selectedEmployeeId
       });
     }
-  }, [selectedEmployee, filters, setFilters]);
+  }, [selectedEmployeeId]);
 
   // Handle day click - open appropriate dialog
   const handleDayClick = (date: Date) => {
-    console.log('Day clicked:', date);
     setSelectedDate(date);
     setEditingJob(null);
     setEditingTask(null);
@@ -182,8 +216,7 @@ export default function Schedule() {
   };
 
   // Handle edit job
-  const handleEditJob = (job: ExtendedJob) => {
-    console.log('Edit job:', job);
+  const handleEditJob = (job: any) => {
     setEditingJob(job);
     setSelectedDate(null); // Clear selected date when editing a job
     setOpenJobDialog(true);
@@ -214,7 +247,11 @@ export default function Schedule() {
     try {
       if (editingJob) {
         // Update existing job
-        await updateJob(editingJob.id, jobData);
+        await updateJobMutation.mutateAsync({
+          id: editingJob.id,
+          data: jobData
+        });
+        
         setSnackbar({
           open: true,
           message: 'Job updated successfully',
@@ -222,7 +259,8 @@ export default function Schedule() {
         });
       } else {
         // Create new job
-        await addJob(jobData);
+        await createJobMutation.mutateAsync(jobData);
+        
         setSnackbar({
           open: true,
           message: 'Job added successfully',
@@ -240,60 +278,20 @@ export default function Schedule() {
     }
   };
 
-  // Handle submit task
-  const handleSubmitTask = async (taskData: any) => {
-    try {
-      // Format the task data with owner flag and priority flag
-      const priority = taskData.priority || 'medium';
-      
-      let formattedTitle = `[OWNER] `;
-      if (priority) {
-        formattedTitle += `[FLAG:${priority}] `;
-      }
-      formattedTitle += taskData.title;
-      
-      const updatedTaskData = {
-        ...taskData,
-        title: formattedTitle,
-      };
-
-      if (editingTask) {
-        await updateJob(editingTask.id, updatedTaskData);
-        setSnackbar({
-          open: true,
-          message: 'Task updated successfully',
-          severity: 'success',
-        });
-      } else {
-        await addJob(updatedTaskData);
-        setSnackbar({
-          open: true,
-          message: 'Task added successfully',
-          severity: 'success',
-        });
-      }
-      
-      refreshData();
-      setOpenTaskDialog(false);
-    } catch (error) {
-      console.error('Error saving task:', error);
-      setSnackbar({
-        open: true,
-        message: `Failed to save task: ${error}`,
-        severity: 'error',
-      });
-    }
-  };
-
   // Handle delete job
   const handleDeleteJob = async (id: string) => {
     try {
-      await deleteJob(id);
+      await deleteJobMutation.mutateAsync(id);
+      
       setSnackbar({
         open: true,
         message: 'Job deleted successfully',
         severity: 'success',
       });
+      
+      if (openJobDialog) {
+        setOpenJobDialog(false);
+      }
     } catch (err) {
       setSnackbar({
         open: true,
@@ -303,177 +301,237 @@ export default function Schedule() {
     }
   };
 
-  // Handle opening route optimizer
+  // Handle opening/closing route optimizer
   const handleOpenRouteOptimizer = () => {
     setRouteOptimizerOpen(true);
   };
-
-  // Handle closing route optimizer
+  
   const handleCloseRouteOptimizer = () => {
     setRouteOptimizerOpen(false);
   };
 
-  if (status === "loading") return <div>Loading...</div>;
+  // If still loading the session, show loading indicator
+  if (status === 'loading') {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
 
   return (
     <Layout>
-      <Box sx={{ height: 'calc(100vh - 80px)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        <ScheduleToolbar 
-          currentDate={currentDate}
-          setCurrentDate={setCurrentDate}
-          viewType={viewType}
-          setViewType={setViewType}
-          openNewJobDialog={() => {
-            setEditingJob(null);
-            setOpenJobDialog(true);
-          }}
-          openNewTaskDialog={() => {
-            setEditingTask(null);
-            setOpenTaskDialog(true);
-          }}
-          openRouteOptimizer={handleOpenRouteOptimizer}
-          users={users as any}
-          clients={clients}
-          filters={filters}
-          setFilters={setFilters}
-          toggleStaffPanel={toggleStaffPanel}
-          showStaffPanel={showStaffPanel}
-        />
+      <Box sx={{ mb: 4 }}>
+        <Typography 
+          variant="h4" 
+          component={motion.h1}
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+          sx={{ fontWeight: 700, mb: 1 }}
+        >
+          Schedule
+        </Typography>
+        <Typography 
+          variant="body1"
+          component={motion.p}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.3, delay: 0.1 }}
+          sx={{ color: theme.palette.text.secondary, mb: 3 }}
+        >
+          Manage your job schedule and assignments.
+        </Typography>
+      </Box>
       
-        <Box sx={{ 
-          position: 'relative',
-          flexGrow: 1,
-          height: 'calc(100% - 180px)',
-          minHeight: '500px',
-          overflow: 'hidden'
-        }}>
+      {/* Schedule Toolbar Component - keeping as inline for simplicity */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, delay: 0.2 }}
+      >
+        <Paper 
+          elevation={0} 
+          sx={{ 
+            p: 2, 
+            mb: 3, 
+            borderRadius: 2,
+            border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
+            display: 'flex',
+            flexWrap: 'wrap',
+            justifyContent: 'space-between',
+            gap: 2
+          }}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <IconButton onClick={() => setCurrentDate(prev => 
+              viewType === 'month' ? subMonths(prev, 1) : 
+              viewType === 'week' ? new Date(prev.setDate(prev.getDate() - 7)) :
+              new Date(prev.setDate(prev.getDate() - 1))
+            )}>
+              <ChevronLeftIcon />
+            </IconButton>
+            
+            <Typography variant="h6" sx={{ fontWeight: 600, minWidth: 180, textAlign: 'center' }}>
+              {viewType === 'month' && format(currentDate, 'MMMM yyyy')}
+              {viewType === 'week' && `Week of ${format(currentDate, 'MMM d, yyyy')}`}
+              {viewType === 'day' && format(currentDate, 'EEEE, MMM d, yyyy')}
+            </Typography>
+            
+            <IconButton onClick={() => setCurrentDate(prev => 
+              viewType === 'month' ? addMonths(prev, 1) : 
+              viewType === 'week' ? new Date(prev.setDate(prev.getDate() + 7)) :
+              new Date(prev.setDate(prev.getDate() + 1))
+            )}>
+              <ChevronRightIcon />
+            </IconButton>
+            
+            <Button 
+              variant="outlined" 
+              size="small"
+              onClick={() => setCurrentDate(new Date())}
+            >
+              Today
+            </Button>
+          </Box>
+          
+          <Box sx={{ display: 'flex', gap: 2 }}>
+            <Tabs 
+              value={viewType} 
+              onChange={(_, value) => setViewType(value)}
+              sx={{ minHeight: 'unset' }}
+            >
+              <Tab value="month" label="Month" />
+              <Tab value="week" label="Week" />
+              <Tab value="day" label="Day" />
+            </Tabs>
+            
+            <Button
+              variant="outlined"
+              startIcon={<PersonIcon />}
+              onClick={toggleStaffPanel}
+              sx={{ ml: 1 }}
+            >
+              Staff
+            </Button>
+            
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={() => handleDayClick(new Date())}
+            >
+              Add Job
+            </Button>
+          </Box>
+        </Paper>
+      </motion.div>
+      
+      <Box sx={{ display: 'flex', gap: 3 }}>
+        {/* Main Calendar Area */}
+        <Box sx={{ flex: 1 }}>
           <AnimatePresence mode="wait">
-            {showStaffPanel ? (
-              <MotionBox
-                key="staff-panel"
-                initial={{ opacity: 0, x: -50 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -50 }}
-                transition={{ duration: 0.3, ease: "easeInOut" }}
-                sx={{ 
-                  height: '100%',
-                  width: '100%',
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  zIndex: 10
-                }}
-              >
-                <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
-                  <Button
-                    startIcon={<CalendarIcon />}
-                    onClick={toggleStaffPanel}
-                    variant="outlined"
-                    size="small"
-                  >
-                    Back to Calendar
-                  </Button>
-                </Box>
-                
-                <StaffPanel 
-                  jobs={filteredJobs}
-                  users={users as any}
-                  currentDate={currentDate}
-                  selectedEmployee={filters.employeeId}
-                  setSelectedEmployee={(id) => setFilters({ ...filters, employeeId: id })}
-                  openRouteOptimizer={handleOpenRouteOptimizer}
-                  isCollapsed={false}
-                  onToggleCollapse={toggleStaffPanel}
-                  fullWidth={true}
-                />
-              </MotionBox>
+            {jobsLoading ? (
+              <SkeletonLoader type="card" count={5} />
+            ) : jobsError ? (
+              <Box sx={{ p: 4, textAlign: 'center' }}>
+                <Typography variant="h6" color="error">Error loading schedule</Typography>
+                <Typography variant="body2">Please try refreshing the page</Typography>
+              </Box>
             ) : (
-              <MotionBox
-                key="calendar-view"
-                initial={{ opacity: 0, x: 50 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 50 }}
-                transition={{ duration: 0.3, ease: "easeInOut" }}
-                sx={{ 
-                  height: '100%',
-                  width: '100%',
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  zIndex: 5,
-                  overflow: 'auto',
-                  pb: 4
-                }}
+              <motion.div
+                key={`${viewType}-${currentDate.toString()}`}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
               >
-                {viewType === 'list' ? (
-                  <ListView 
-                    jobs={filteredJobs}
-                    onJobClick={handleJobClick}
-                    onEditJob={handleJobClick}
-                    onDeleteJob={handleDeleteJob}
-                  />
-                ) : (
+                {viewType === 'month' && (
                   <CalendarView 
-                    jobs={filteredJobs}
-                    viewType={viewType}
-                    currentDate={currentDate}
+                    jobs={filteredJobs} 
+                    date={currentDate} 
                     onDayClick={handleDayClick}
                     onJobClick={handleJobClick}
                   />
                 )}
-              </MotionBox>
+                
+                {(viewType === 'week' || viewType === 'day') && (
+                  <ListView 
+                    jobs={filteredJobs} 
+                    date={currentDate} 
+                    viewType={viewType}
+                    onDayClick={handleDayClick}
+                    onJobClick={handleJobClick}
+                  />
+                )}
+              </motion.div>
             )}
           </AnimatePresence>
         </Box>
+        
+        {/* Staff Side Panel */}
+        <AnimatePresence>
+          {showStaffPanel && (
+            <MotionBox
+              initial={{ x: 300, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: 300, opacity: 0 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 500 }}
+              sx={{ 
+                width: 280, 
+                minWidth: 280,
+                overflow: 'hidden',
+              }}
+            >
+              <StaffPanel 
+                onEmployeeSelect={setSelectedEmployeeId}
+                selectedEmployeeId={selectedEmployeeId}
+                onClose={toggleStaffPanel}
+              />
+            </MotionBox>
+          )}
+        </AnimatePresence>
       </Box>
       
-      {/* Job Form */}
-      <JobForm 
+      {/* Job Form Dialog */}
+      <JobForm
         open={openJobDialog}
         onClose={() => setOpenJobDialog(false)}
         onSubmit={handleSubmitJob}
-        initialData={editingJob}
-        users={users}
-        clients={clients}
+        onDelete={handleDeleteJob}
+        job={editingJob}
         selectedDate={selectedDate}
-        allJobs={jobs}
-        isEdit={!!editingJob}
+        clients={clients}
       />
       
-      {/* Task Form */}
-      <TaskForm 
+      {/* Task Form Dialog */}
+      <TaskForm
         open={openTaskDialog}
         onClose={() => setOpenTaskDialog(false)}
-        onSubmit={handleSubmitTask}
-        initialData={editingTask}
-        users={users}
-        selectedDate={selectedDate}
-        isEdit={!!editingTask}
+        onSubmit={() => {}}
+        task={editingTask}
       />
-
+      
       {/* Route Optimizer Dialog */}
       <Dialog
         open={routeOptimizerOpen}
         onClose={handleCloseRouteOptimizer}
         fullWidth
-        maxWidth="lg"
-        sx={{
-          '& .MuiDialog-paper': {
-            height: '90vh',
-          }
-        }}
+        maxWidth="md"
       >
-        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 2 }}>
-          <Typography variant="h6">Route Optimization</Typography>
-          <IconButton onClick={handleCloseRouteOptimizer}>
+        <DialogTitle>
+          Optimize Routes
+          <IconButton
+            onClick={handleCloseRouteOptimizer}
+            sx={{ position: 'absolute', right: 8, top: 8 }}
+          >
             <CloseIcon />
           </IconButton>
         </DialogTitle>
-        <DialogContent dividers sx={{ p: 0 }}>
-          <RouteOptimizer
-            jobs={jobs}
-            employees={users}
-            currentDate={currentDate}
+        <DialogContent>
+          <RouteOptimizer 
+            jobs={filteredJobs} 
+            date={currentDate}
+            employeeId={selectedEmployeeId} 
           />
         </DialogContent>
       </Dialog>
@@ -481,13 +539,12 @@ export default function Schedule() {
       {/* Snackbar for notifications */}
       <Snackbar
         open={snackbar.open}
-        autoHideDuration={6000}
+        autoHideDuration={4000}
         onClose={() => setSnackbar({ ...snackbar, open: false })}
       >
-        <Alert 
-          onClose={() => setSnackbar({ ...snackbar, open: false })} 
-          severity={snackbar.severity} 
-          sx={{ width: '100%' }}
+        <Alert
+          severity={snackbar.severity}
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
         >
           {snackbar.message}
         </Alert>
