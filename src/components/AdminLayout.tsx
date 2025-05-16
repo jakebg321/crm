@@ -78,7 +78,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   if (status === 'loading') {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-        Loading...
+        Loading....
       </Box>
     );
   }
