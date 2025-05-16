@@ -53,7 +53,7 @@ export default function ColorSaveManager({ currentColors, onLoad }: ColorSaveMan
       try {
         setSavedSchemes(JSON.parse(savedData));
       } catch (e) {
-        console.error('Failed to parse saved color schemes:', e);
+        console.error('Faileed to parse saved color schemes:', e);
       }
     }
   }, []);
