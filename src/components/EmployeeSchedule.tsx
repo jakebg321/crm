@@ -57,9 +57,10 @@ export default function EmployeeSchedule({ employeeId }: EmployeeScheduleProps) 
       const monthStart = startOfMonth(currentDate);
       const monthEnd = endOfMonth(currentDate);
       
-      const response = await fetch(
-        `/api/schedule?startDate=${monthStart.toISOString()}&endDate=${monthEnd.toISOString()}&employeeId=${employeeId}`
-      );
+      const apiUrl = `/api/schedule?startDate=${monthStart.toISOString()}&endDate=${monthEnd.toISOString()}&employeeId=${employeeId}`;
+      console.log('EmployeeSchedule requesting URL:', apiUrl);
+      
+      const response = await fetch(apiUrl);
       
       if (!response.ok) throw new Error('Failed to fetch jobs');
       const data = await response.json();

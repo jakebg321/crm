@@ -6,10 +6,12 @@ import { useParams, useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import Layout from '../../../components/Layout';
 import {
-  Box, Typography, TextField, Button, MenuItem, Select, InputLabel, FormControl, Snackbar, Alert, CircularProgress
+  Box, Typography, TextField, Button, MenuItem, Select, InputLabel, FormControl, Snackbar, Alert, CircularProgress,
+  Divider
 } from '@mui/material';
 import { AlertColor, SelectChangeEvent } from '@mui/material';
 import JobNotes from '../components/JobNotes';
+import JobPhotos from '../components/JobPhotos';
 
 const JOB_TYPES = [
   'LAWN_MAINTENANCE',
@@ -47,9 +49,12 @@ interface Job {
 interface Note {
   id: string;
   content: string;
-  completed: boolean;
   createdAt: string;
+  completed: boolean;
   completedAt?: string;
+  createdBy: {
+    name: string;
+  };
 }
 
 export default function JobDetails() {
@@ -339,6 +344,9 @@ export default function JobDetails() {
             {saving ? 'Saving...' : 'Save Changes'}
           </Button>
         </Box>
+        
+        <Divider sx={{ my: 4 }} />
+        
         <JobNotes
           jobId={job.id}
           notes={notes}
@@ -347,6 +355,11 @@ export default function JobDetails() {
           onNoteDelete={handleNoteDelete}
           onNoteEdit={handleNoteEdit}
         />
+        
+        <Divider sx={{ my: 4 }} />
+        
+        <JobPhotos jobId={job.id} />
+        
         <Snackbar
           open={snackbar.open}
           autoHideDuration={4000}

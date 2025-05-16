@@ -1,7 +1,7 @@
 // Main Dashboard Page - Displays overview of business metrics and statistics
 'use client';
 
-import { Grid, Paper, Typography, Box, IconButton } from '@mui/material';
+import { Grid, Paper, Typography, Box, IconButton, CircularProgress } from '@mui/material';
 import Layout from '../components/Layout';
 import { BarChart } from '@mui/x-charts';
 import { alpha, useTheme } from '@mui/material/styles';
@@ -28,6 +28,24 @@ export default function Dashboard() {
     revenue: Array(12).fill(0) 
   });
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // If not authenticated, redirect to login page
+    if (status === 'unauthenticated') {
+      router.push('/login');
+    } 
+    // If authenticated
+    else if (status === 'authenticated' && session?.user?.role) {
+      // If staff user, redirect to staff dashboard
+      if (session.user.role === 'STAFF') {
+        router.push('/staff/dashboard');
+      } 
+      // If admin/manager, redirect to admin dashboard
+      else if (session.user.role === 'ADMIN' || session.user.role === 'MANAGER') {
+        router.push('/admin/dashboard');
+      }
+    }
+  }, [status, session, router]);
 
   useEffect(() => {
     // Redirect unauthenticated users to the home page
@@ -77,14 +95,42 @@ export default function Dashboard() {
     fetchStats();
   }, [status, router]);
 
-  // Show loading state while checking authentication
-  if (status === 'loading' || (status === 'unauthenticated' && loading)) {
-    return <Box sx={{ p: 6, textAlign: 'center' }}>Loading...</Box>;
+  // If still loading the session, show loading indicator
+  if (status === 'loading' || status === 'unauthenticated') {
+    return (
+      <Box sx={{ 
+        display: 'flex', 
+        flexDirection: 'column',
+        alignItems: 'center', 
+        justifyContent: 'center', 
+        height: '100vh' 
+      }}>
+        <CircularProgress size={40} sx={{ mb: 2 }} />
+        <Typography variant="body1" color="text.secondary">
+          Loading your dashboard...
+        </Typography>
+      </Box>
+    );
   }
 
-  // Don't render the dashboard for unauthenticated users (they should be redirected)
-  if (status === 'unauthenticated') {
-    return null;
+  // If staff, should have been redirected, but let's handle the case where redirection didn't work
+  if (session?.user?.role === 'STAFF') {
+    return (
+      <Box sx={{ 
+        display: 'flex', 
+        flexDirection: 'column',
+        alignItems: 'center', 
+        justifyContent: 'center', 
+        height: '100vh',
+        p: 3, 
+        textAlign: 'center'
+      }}>
+        <Typography variant="h5" gutterBottom>
+          Redirecting to Staff Dashboard...
+        </Typography>
+        <CircularProgress size={30} sx={{ mt: 2 }} />
+      </Box>
+    );
   }
 
   if (loading) return <Layout><Box sx={{ p: 6, textAlign: 'center' }}>Loading...</Box></Layout>;

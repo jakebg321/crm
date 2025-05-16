@@ -11,6 +11,11 @@ import {
   Alert,
   InputAdornment,
   Link as MuiLink,
+  Radio,
+  RadioGroup,
+  FormControlLabel,
+  FormControl,
+  FormLabel,
 } from "@mui/material";
 import { Email, Lock, Person, ArrowBack } from "@mui/icons-material";
 import { useRouter } from "next/navigation";
@@ -30,6 +35,9 @@ export default function RegisterPage() {
   const router = useRouter();
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
   const { status } = useSession();
+  const [orgMode, setOrgMode] = useState("create"); // "create" or "join"
+  const [companyName, setCompanyName] = useState("");
+  const [companyId, setCompanyId] = useState("");
 
   // Redirect authenticated users to dashboard
   useEffect(() => {
@@ -70,10 +78,26 @@ export default function RegisterPage() {
     setLoading(true);
     setError("");
     setSuccess("");
+    let body: any = { name, email, password };
+    if (orgMode === "create") {
+      if (!companyName) {
+        setError("Organization name is required.");
+        setLoading(false);
+        return;
+      }
+      body.companyName = companyName;
+    } else {
+      if (!companyId) {
+        setError("Organization code is required.");
+        setLoading(false);
+        return;
+      }
+      body.companyId = companyId;
+    }
     const res = await fetch("/api/auth/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, email, password }),
+      body: JSON.stringify(body),
     });
     setLoading(false);
     if (res.ok) {
@@ -180,6 +204,40 @@ export default function RegisterPage() {
               ),
             }}
           />
+          <FormControl component="fieldset" sx={{ mt: 2 }}>
+            <FormLabel component="legend">Organization</FormLabel>
+            <RadioGroup
+              row
+              value={orgMode}
+              onChange={(e) => setOrgMode(e.target.value)}
+              name="orgMode"
+            >
+              <FormControlLabel value="create" control={<Radio />} label="Create New" />
+              <FormControlLabel value="join" control={<Radio />} label="Join Existing" />
+            </RadioGroup>
+          </FormControl>
+          {orgMode === "create" && (
+            <TextField
+              label="Organization Name"
+              type="text"
+              value={companyName}
+              onChange={(e) => setCompanyName(e.target.value)}
+              fullWidth
+              required
+              margin="normal"
+            />
+          )}
+          {orgMode === "join" && (
+            <TextField
+              label="Organization Code"
+              type="text"
+              value={companyId}
+              onChange={(e) => setCompanyId(e.target.value)}
+              fullWidth
+              required
+              margin="normal"
+            />
+          )}
           {error && (
             <Alert severity="error" sx={{ mt: 2 }}>
               {error}

@@ -31,6 +31,7 @@ export const authOptions: AuthOptions = {
             name: user.name,
             email: user.email,
             role: user.role,
+            companyId: user.companyId,
           };
         } catch (error) {
           console.error("NextAuth authorize error:", error);
@@ -54,6 +55,7 @@ export const authOptions: AuthOptions = {
           ...session.user,
           id: token.sub || "",
           role: token.role as string || "",
+          companyId: token.companyId as string || "",
         };
       }
       return session;
@@ -61,9 +63,9 @@ export const authOptions: AuthOptions = {
     async jwt({ token, user }) {
       if (user) {
         token.role = (user as any).role;
+        token.companyId = (user as any).companyId;
       }
       return token;
     }
-  },
-  debug: process.env.NODE_ENV === 'development',
+  }
 }; 

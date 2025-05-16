@@ -11,8 +11,8 @@ export async function GET(
 ) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session || !session.user || !session.user.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (!session || !session.user || !session.user.id || !session.user.companyId) {
+      return NextResponse.json({ error: 'Unauthorized: No user ID or company ID in session' }, { status: 401 });
     }
 
     // Allow users to view their own profile or admins/managers to view any profile
@@ -25,11 +25,15 @@ export async function GET(
     }
 
     if (user.id !== params.id && user.role !== 'ADMIN' && user.role !== 'MANAGER') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized: You can only view your own profile or profiles within your company' }, { status: 401 });
     }
 
-    const employee = await prisma.user.findUnique({
-      where: { id: params.id },
+    // Get employee from the same company
+    const employee = await prisma.user.findFirst({
+      where: { 
+        id: params.id,
+        companyId: session.user.companyId // Ensure employee is from the same company
+      },
       select: {
         id: true,
         name: true,
@@ -83,8 +87,8 @@ export async function PUT(
 ) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session || !session.user || !session.user.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (!session || !session.user || !session.user.id || !session.user.companyId) {
+      return NextResponse.json({ error: 'Unauthorized: No user ID or company ID in session' }, { status: 401 });
     }
 
     // Only allow admins to update employee roles, or users to update their own profile
@@ -96,17 +100,29 @@ export async function PUT(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Verify target employee exists and is in the same company
+    const targetEmployee = await prisma.user.findFirst({
+      where: { 
+        id: params.id,
+        companyId: session.user.companyId // Ensure employee is from the same company
+      },
+    });
+
+    if (!targetEmployee) {
+      return NextResponse.json({ error: 'Employee not found or not in your company' }, { status: 404 });
+    }
+
     const body = await request.json();
     const { name, email, password, role } = body;
 
     // If updating role, only admin can do this
     if (role && user.role !== 'ADMIN') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized: Only admins can update roles' }, { status: 401 });
     }
 
     // If updating someone else's profile, only admin can do this
     if (params.id !== user.id && user.role !== 'ADMIN') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized: You can only update your own profile' }, { status: 401 });
     }
 
     // Check if email is being changed and if it already exists
@@ -157,8 +173,8 @@ export async function DELETE(
 ) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session || !session.user || !session.user.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (!session || !session.user || !session.user.id || !session.user.companyId) {
+      return NextResponse.json({ error: 'Unauthorized: No user ID or company ID in session' }, { status: 401 });
     }
 
     // Only allow admins to delete employees
@@ -167,16 +183,24 @@ export async function DELETE(
     });
 
     if (!user || user.role !== 'ADMIN') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized: Only admins can delete employees' }, { status: 401 });
     }
 
-    // Check if employee exists
-    const employee = await prisma.user.findUnique({
-      where: { id: params.id },
+    // Check if employee exists in the same company
+    const employee = await prisma.user.findFirst({
+      where: { 
+        id: params.id,
+        companyId: session.user.companyId // Ensure employee is from the same company
+      },
     });
 
     if (!employee) {
-      return NextResponse.json({ error: 'Employee not found' }, { status: 404 });
+      return NextResponse.json({ error: 'Employee not found or not in your company' }, { status: 404 });
+    }
+
+    // Prevent deleting yourself
+    if (employee.id === session.user.id) {
+      return NextResponse.json({ error: 'You cannot delete your own account' }, { status: 400 });
     }
 
     // Delete employee

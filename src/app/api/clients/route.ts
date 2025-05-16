@@ -76,6 +76,7 @@ export async function POST(request: Request) {
         state,
         zipCode,
         notes,
+        companyId: session.user.companyId,
         jobs: {
           create: {
             title: 'Initial Contact',
@@ -86,6 +87,7 @@ export async function POST(request: Request) {
             price: 0,
             createdById: session.user.id,
             assignedToId: session.user.id,
+            companyId: session.user.companyId,
           }
         }
       },

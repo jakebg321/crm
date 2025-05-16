@@ -7,61 +7,113 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Company {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users     User[]
+  clients   Client[]
+  jobs      Job[]
+  estimates Estimate[]
+  // Notes are related to Jobs, so indirectly to Company
+  // SavedItems are related to Users, so indirectly to Company
+  // EstimateTemplates are related to Users, so indirectly to Company
+  // UserSettings are related to Users, so indirectly to Company
+}
+
 model User {
-  id              String     @id @default(cuid())
-  email           String     @unique
-  name            String
-  password        String
-  role            UserRole   @default(STAFF)
-  createdAt       DateTime   @default(now())
-  updatedAt       DateTime   @updatedAt
-  assignedJobs    Job[]      @relation("AssignedTo")
-  createdJobs     Job[]      @relation("CreatedBy")
+  id             String   @id @default(cuid())
+  email          String   @unique
+  name           String?
+  password       String?
+  role           UserRole @default(STAFF)
+  emailVerified  DateTime?
+  image          String?
+  accounts       Account[]
+  sessions       Session[]
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  
+  companyId      String   // Made non-optional
+  company        Company  @relation(fields: [companyId], references: [id])
+
+  assignedJobs   Job[]     @relation("AssignedTo")
+  createdJobs    Job[]     @relation("CreatedBy")
   createdEstimates Estimate[] @relation("CreatedEstimates")
-  notes           Note[]     @relation("CreatedNotes")
-  savedItems      SavedItem[] @relation("UserSavedItems")
+  notes          Note[]    @relation("CreatedNotes")
+  savedItems     SavedItem[] @relation("UserSavedItems")
   estimateTemplates EstimateTemplate[] @relation("UserEstimateTemplates")
-  settings        UserSettings?
-  assignedTasks   Task[]     @relation("AssignedTasksTo")
-  createdTasks    Task[]     @relation("CreatedTasksBy")
+  userSettings   UserSettings? // This is 1-to-1 with User
+  photos         Photo[] @relation("UploadedPhotos") // Photos uploaded by user
+  assignedTasks  Task[] @relation("AssignedTasksTo")
+  createdTasks   Task[] @relation("CreatedTasksBy")
+  authenticators Authenticator[]
 }
 
 model Client {
-  id        String     @id @default(cuid())
+  id        String @id @default(cuid())
   name      String
-  email     String     @unique
-  phone     String
-  address   String
-  city      String
-  state     String
-  zipCode   String
-  notes     String?
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
+  email     String @unique
+  phone     String?
+  address   String?
+  city      String?
+  state     String?
+  zipCode   String?
+  notes     String? @db.Text
+
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id])
+
   estimates Estimate[]
   jobs      Job[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Job {
   id           String    @id @default(cuid())
   title        String
-  description  String?
+  description  String?   @db.Text
   status       JobStatus @default(PENDING)
-  type         JobType?
+  type         JobType? 
   startDate    DateTime?
   endDate      DateTime?
-  price        Float?
+  price        Float?    @default(0)
+  notesVisibleToClient Boolean @default(false)
+  ownerTaskFlag Boolean @default(false)
+  flagColor    String? // e.g., red, orange, green
+
+  companyId    String
+  company      Company   @relation(fields: [companyId], references: [id])
+  
   clientId     String?
+  client       Client?   @relation(fields: [clientId], references: [id])
   assignedToId String?
+  assignedTo   User?     @relation("AssignedTo", fields: [assignedToId], references: [id])
   createdById  String
+  createdBy    User      @relation("CreatedBy", fields: [createdById], references: [id])
   estimateId   String?
+  estimate     Estimate?  @relation(fields: [estimateId], references: [id])
+  notes        Note[]
+  photos       Photo[] // Photos for this job
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
-  assignedTo   User?     @relation("AssignedTo", fields: [assignedToId], references: [id])
-  client       Client?   @relation(fields: [clientId], references: [id])
-  createdBy    User      @relation("CreatedBy", fields: [createdById], references: [id])
-  estimate     Estimate? @relation(fields: [estimateId], references: [id])
-  notes        Note[]
+}
+
+model Photo {
+  id          String      @id @default(cuid())
+  url         String
+  fileName    String
+  caption     String?
+  photoType   PhotoType   @default(OTHER)
+  jobId       String
+  uploaderId  String
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  job         Job         @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  uploader    User        @relation("UploadedPhotos", fields: [uploaderId], references: [id])
 }
 
 model Task {
@@ -81,20 +133,26 @@ model Task {
 }
 
 model Estimate {
-  id          String         @id @default(cuid())
+  id          String   @id @default(cuid())
   title       String
-  description String
+  description String? @db.Text
   status      EstimateStatus @default(DRAFT)
   price       Float
-  validUntil  DateTime
+  validUntil  DateTime?
+  taxRate     Float? @default(0)
+  terms       String? @db.Text
+
+  companyId   String
+  company     Company  @relation(fields: [companyId], references: [id])
+
   clientId    String
+  client      Client   @relation(fields: [clientId], references: [id])
   createdById String
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
-  client      Client         @relation(fields: [clientId], references: [id])
-  createdBy   User           @relation("CreatedEstimates", fields: [createdById], references: [id])
+  createdBy   User     @relation("CreatedEstimates", fields: [createdById], references: [id])
   jobs        Job[]
   lineItems   LineItem[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 model LineItem {
@@ -110,27 +168,29 @@ model LineItem {
 }
 
 model SavedItem {
-  id          String   @id @default(cuid())
+  id String @id @default(cuid())
   description String
-  unitPrice   Float
-  quantity    Int      @default(1)
-  category    String?  @default("Other")
-  userId      String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  user        User     @relation("UserSavedItems", fields: [userId], references: [id])
+  unitPrice Float
+  quantity Int @default(1)
+  category String? @default("Other")
+  userId String // Belongs to a user, and user belongs to a company
+  user   User   @relation("UserSavedItems", fields: [userId], references: [id])
+  // No direct companyId, inherits from User
   templateItems TemplateItem[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model EstimateTemplate {
-  id          String   @id @default(cuid())
+  id String @id @default(cuid())
   name        String
   description String?
-  userId      String
+  userId      String // Belongs to a user
+  user        User   @relation("UserEstimateTemplates", fields: [userId], references: [id])
+  // No direct companyId, inherits from User
+  items       TemplateItem[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  user        User     @relation("UserEstimateTemplates", fields: [userId], references: [id])
-  items       TemplateItem[]
 }
 
 model TemplateItem {
@@ -143,26 +203,43 @@ model TemplateItem {
 }
 
 model Note {
-  id          String   @id @default(cuid())
-  content     String
-  completed   Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  completedAt DateTime?
-  job         Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  jobId       String
-  createdBy   User     @relation("CreatedNotes", fields: [createdById], references: [id])
+  id        String @id @default(cuid())
+  content   String @db.Text
+  jobId     String
+  job       Job    @relation(fields: [jobId], references: [id], onDelete: Cascade)
   createdById String
+  createdBy User   @relation("CreatedNotes", fields: [createdById], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  // No direct companyId, inherits from Job -> User (createdBy)
 }
 
 model UserSettings {
-  id                String   @id @default(cuid())
-  userId            String   @unique
-  companySettings   String?  @db.Text
-  estimateSettings  String?  @db.Text
-  brandingSettings  String?  @db.Text
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-  user              User     @relation(fields: [userId], references: [id])
+  id String @id @default(cuid())
+  userId             String   @unique // 1-to-1 with User
+  user               User     @relation(fields: [userId], references: [id])
+  // ... other userSettings fields ...
+  // No direct companyId, inherits from User
+  companyName        String?
+  companyLogo        String?
+  primaryColor       String?
+  secondaryColor     String?
+  accentColor        String?
+  fontPrimary        String?
+  fontSecondary      String?
+  addressLine1       String?
+  addressLine2       String?
+  city               String?
+  state              String?
+  zipCode            String?
+  phoneNumber        String?
+  emailAddress       String?
+  website            String?
+  taxRate            Float?   @default(0)
+  defaultEstimateTerms String? @db.Text
+  emailSignature     String? @db.Text
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 }
 
 enum UserRole {
@@ -210,4 +287,54 @@ enum EstimateStatus {
   ACCEPTED
   REJECTED
   EXPIRED
+}
+
+enum PhotoType {
+  BEFORE
+  AFTER
+  PROGRESS
+  OTHER
+}
+
+model Account {
+  id                 String  @id @default(cuid())
+  userId             String
+  type               String
+  provider           String
+  providerAccountId  String
+  refresh_token      String? 
+  access_token       String? 
+  expires_at         Int?    
+  token_type         String? 
+  scope              String? 
+  id_token           String? 
+  session_state      String? 
+  user               User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+  @@unique([identifier, token])
+}
+
+model Authenticator {
+  id                String   @id @default(cuid())
+  userId            String
+  credentialID      String   @unique
+  credentialPublicKey String
+  counter           Int
+  transports        String?
+  credentialDeviceType String
+  credentialBackedUp Boolean
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

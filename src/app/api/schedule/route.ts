@@ -34,15 +34,18 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Unauthorized - No user in session' }, { status: 401 });
     }
     
-    if (!session.user.id) {
-      console.log('Unauthorized: No user ID in session');
-      return NextResponse.json({ error: 'Unauthorized - No user ID' }, { status: 401 });
+    if (!session.user.id || !session.user.companyId) {
+      console.log('Unauthorized: No user ID or company ID in session');
+      return NextResponse.json({ error: 'Unauthorized - Missing user or company ID' }, { status: 401 });
     }
 
     const { searchParams } = new URL(request.url);
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
     const employeeId = searchParams.get('employeeId');
+    const sessionCompanyId = session.user.companyId;
+
+    console.log('API /api/schedule received params - startDate:', startDate, 'endDate:', endDate, 'employeeId:', employeeId, 'sessionCompanyId:', sessionCompanyId);
 
     if (!startDate || !endDate) {
       console.log('Missing date parameters');
@@ -52,19 +55,23 @@ export async function GET(request: Request) {
       );
     }
 
-    console.log(`Fetching jobs from ${startDate} to ${endDate} for user ${session.user.id}`);
+    console.log(`Fetching jobs from ${startDate} to ${endDate} for user ${session.user.id} in company ${sessionCompanyId}`);
     
-    // Verify the user exists in the database
+    // Verify the session user exists in the database and belongs to the session company
     try {
       const userExists = await prisma.user.findUnique({
-        where: { id: session.user.id },
-        select: { id: true }
+        where: { id: session.user.id, companyId: sessionCompanyId }, 
+        select: { id: true, role: true }
       });
       
       if (!userExists) {
-        console.log(`User ID ${session.user.id} not found in database`);
-        return NextResponse.json({ error: 'User not found in database' }, { status: 404 });
+        console.log(`Session User ID ${session.user.id} not found in company ${sessionCompanyId}`);
+        return NextResponse.json({ error: 'Session user not found in specified company' }, { status: 404 });
       }
+      // Update session.user.role if it wasn't already perfectly in sync, using db source of truth
+      // This assumes session object might not be fully populated or could be stale.
+      session.user.role = userExists.role; 
+
     } catch (userError) {
       console.error('Error checking user existence:', userError);
       return NextResponse.json({ 
@@ -75,53 +82,56 @@ export async function GET(request: Request) {
     
     // Now try to fetch the jobs
     try {
-      const where = {
+      const where: any = {
+        companyId: sessionCompanyId,
         startDate: {
           gte: new Date(startDate),
           lte: new Date(endDate),
         },
-        ...(employeeId && {
-          assignedToId: employeeId,
-        }),
       };
+
+      if (employeeId) {
+        if (session.user.role === 'ADMIN' || session.user.role === 'MANAGER'){
+            // Admin/Manager can query for a specific employee within their own company.
+            // Ensure the target employee also belongs to the same company.
+            const targetEmployeeExists = await prisma.user.findUnique({
+                where: { id: employeeId, companyId: sessionCompanyId }, 
+                select: { id: true }
+            });
+            if (!targetEmployeeExists){
+                console.log(`Target employeeId ${employeeId} not found in company ${sessionCompanyId}`);
+                // Return empty or 404, for now let Prisma handle (will likely return empty)
+            }
+        }
+        else if (session.user.role === 'STAFF' && employeeId !== session.user.id) {
+            console.log(`Staff user ${session.user.id} attempted to fetch jobs for ${employeeId} in company ${sessionCompanyId}`);
+            return NextResponse.json({ error: 'Forbidden: Staff can only access their own schedule via employeeId.' }, { status: 403 });
+        }
+        where.assignedToId = employeeId;
+      }
+      else if (!employeeId && session.user.role === 'STAFF') {
+        where.assignedToId = session.user.id;
+      }
       
-      // First check if the job table exists by trying a count
-      const jobCount = await prisma.job.count({
-        where: where
-      });
+      console.log('Prisma where clause for job query:', JSON.stringify(where, null, 2));
       
-      console.log(`Found ${jobCount} jobs in count query`);
+      const jobCount = await prisma.job.count({ where });
+      console.log(`Found ${jobCount} jobs in count query for company ${sessionCompanyId}`);
       
-      // If we get here, the table exists, so we can try the full query
       const jobs = await prisma.job.findMany({
         where,
         include: {
-          client: {
-            select: {
-              id: true,
-              name: true,
-              address: true,
-              city: true,
-              state: true,
-              zipCode: true
-            },
-          },
-          assignedTo: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
+          client: { select: { id: true, name: true, address: true, city: true, state: true, zipCode: true }},
+          assignedTo: { select: { id: true, name: true }},
         },
-        orderBy: {
-          startDate: 'asc',
-        },
+        orderBy: { startDate: 'asc' },
       });
       
-      console.log(`Successfully fetched ${jobs.length} jobs`);
+      console.log(`Successfully fetched ${jobs.length} jobs for company ${sessionCompanyId}`);
       return NextResponse.json(jobs);
     } catch (prismaError) {
-      console.error('Prisma query error:', prismaError);
+      // Modified to log the full Prisma error object
+      console.error('Full Prisma query error object:', prismaError);
       
       // If it's a known Prisma error, we can provide more details
       if (prismaError instanceof PrismaClientKnownRequestError) {
@@ -185,21 +195,23 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized - No user in session' }, { status: 401 });
     }
     
-    if (!session.user.id) {
-      console.log('Unauthorized: No user ID in session');
-      return NextResponse.json({ error: 'Unauthorized - No user ID' }, { status: 401 });
+    if (!session.user.id || !session.user.companyId) {
+      console.log('Unauthorized POST: No user ID or company ID in session');
+      return NextResponse.json({ error: 'Unauthorized - Missing user or company ID' }, { status: 401 });
     }
     
+    const sessionCompanyId = session.user.companyId;
+
     // Verify the user exists in the database
     try {
       const userExists = await prisma.user.findUnique({
-        where: { id: session.user.id },
+        where: { id: session.user.id, companyId: sessionCompanyId },
         select: { id: true }
       });
       
       if (!userExists) {
-        console.log(`User ID ${session.user.id} not found in database`);
-        return NextResponse.json({ error: 'User not found in database' }, { status: 404 });
+        console.log(`POST: Session User ID ${session.user.id} not found in company ${sessionCompanyId}`);
+        return NextResponse.json({ error: 'Session user not found in specified company' }, { status: 404 });
       }
     } catch (userError) {
       console.error('Error checking user existence:', userError);
@@ -247,6 +259,7 @@ export async function POST(request: Request) {
       price: price === '' ? null : price,
       clientId: clientId || null,
       assignedToId: assignedToId || null,
+      companyId: sessionCompanyId,
       createdById: session.user.id,
     };
 
@@ -265,25 +278,25 @@ export async function POST(request: Request) {
     try {
       if (clientId) {
         const clientExists = await prisma.client.findUnique({
-          where: { id: clientId },
+          where: { id: clientId, companyId: sessionCompanyId },
           select: { id: true }
         });
         
         if (!clientExists) {
-          console.log(`Client ID ${clientId} not found in database`);
-          return NextResponse.json({ error: 'Client not found' }, { status: 404 });
+          console.log(`Client ID ${clientId} not found in company ${sessionCompanyId}`);
+          return NextResponse.json({ error: 'Client not found in your company' }, { status: 404 });
         }
       }
       
       if (assignedToId) {
         const assignedToExists = await prisma.user.findUnique({
-          where: { id: assignedToId },
+          where: { id: assignedToId, companyId: sessionCompanyId },
           select: { id: true }
         });
         
         if (!assignedToExists) {
-          console.log(`AssignedTo user ID ${assignedToId} not found in database`);
-          return NextResponse.json({ error: 'Assigned user not found' }, { status: 404 });
+          console.log(`AssignedTo user ID ${assignedToId} not found in company ${sessionCompanyId}`);
+          return NextResponse.json({ error: 'Assigned user not found in your company' }, { status: 404 });
         }
       }
     } catch (entityError) {

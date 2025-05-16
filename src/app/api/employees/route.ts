@@ -8,8 +8,8 @@ import * as bcrypt from 'bcryptjs';
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
-    if (!session || !session.user || !session.user.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (!session || !session.user || !session.user.id || !session.user.companyId) {
+      return NextResponse.json({ error: 'Unauthorized: No user ID or company ID in session' }, { status: 401 });
     }
 
     // Only allow admins and managers to view all employees
@@ -18,10 +18,14 @@ export async function GET() {
     });
 
     if (!user || (user.role !== 'ADMIN' && user.role !== 'MANAGER')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized: Only admins and managers can view employees' }, { status: 401 });
     }
 
+    // Filter employees by the current user's company ID
     const employees = await prisma.user.findMany({
+      where: {
+        companyId: session.user.companyId, // Only show employees from the same company
+      },
       select: {
         id: true,
         name: true,
@@ -64,8 +68,8 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session || !session.user || !session.user.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (!session || !session.user || !session.user.id || !session.user.companyId) {
+      return NextResponse.json({ error: 'Unauthorized: No user ID or company ID in session' }, { status: 401 });
     }
 
     // Only allow admins to create new employees
@@ -74,7 +78,7 @@ export async function POST(request: Request) {
     });
 
     if (!user || user.role !== 'ADMIN') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized: Only admins can create employees' }, { status: 401 });
     }
 
     const body = await request.json();
@@ -103,13 +107,14 @@ export async function POST(request: Request) {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Create new employee
+    // Create new employee with the current user's company ID
     const newEmployee = await prisma.user.create({
       data: {
         name,
         email,
         password: hashedPassword,
         role: role || 'STAFF',
+        companyId: session.user.companyId, // Assign the same company ID
       },
     });
 

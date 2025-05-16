@@ -1,0 +1,118 @@
+# 🚨 Registration 400 Error: Surefire Fix (2024-07-16)
+
+## Root Cause
+- The registration API file was named `RegisterRoute.ts` instead of the required `route.ts` for Next.js App Router API endpoints.
+- Next.js only recognizes `route.ts` (or `route.js`) as an API endpoint file. Any other filename is ignored, so requests to `/api/auth/register` return a default 404/400 error (not JSON), causing the frontend to crash when parsing the error.
+
+## Step-by-Step Fix
+1. **Rename the file:**
+   - Change `crm/src/app/api/auth/register/RegisterRoute.ts` to `crm/src/app/api/auth/register/route.ts`.
+2. **Restart your dev server:**
+   - Stop and restart your Next.js dev server to clear any cache and ensure the new route is picked up.
+3. **Test registration:**
+   - Try both "create organization" and "join organization" flows.
+   - You should now see proper error messages and successful registration.
+
+## Investigation Summary
+- All backend and frontend logic was correct, but the API file was not being recognized due to its name.
+- No duplicate or shadowing files were found.
+- Middleware and NextAuth config are not interfering.
+- Prisma schema and client setup are correct.
+
+**This file naming issue is a common pitfall in Next.js App Router projects. Always use `route.ts` for API endpoints.**
+
+---
+
+# Plan to Resolve 400 Bad Request for employeeId=staff-user-id
+
+The recurring `GET http://localhost:3000/api/schedule?employeeId=staff-user-id 400 (Bad Request)` error needs systematic investigation. This error likely originates when navigating to a page like `/employees/staff-user-id`, which then uses the `EmployeeSchedule.tsx` component, passing `"staff-user-id"` as the `employeeId` prop.
+
+## Investigation & Resolution Steps:
+
+### 1. Verify `startDate` and `endDate` Formatting and Presence
+   - **Client-Side (`crm/src/components/EmployeeSchedule.tsx`):**
+     - Before the `fetch` call within the `fetchJobs` function, add `console.log` statements for `monthStart.toISOString()`, `monthEnd.toISOString()`, and the fully constructed `url`. This will confirm their values and format immediately before the request is made.
+     ```typescript
+     // Example addition in EmployeeSchedule.tsx before fetch:
+     const apiUrl = `/api/schedule?startDate=${monthStart.toISOString()}&endDate=${monthEnd.toISOString()}&employeeId=${employeeId}`;
+     console.log('EmployeeSchedule requesting URL:', apiUrl);
+     const response = await fetch(apiUrl);
+     ```
+   - **Server-Side (`crm/src/app/api/schedule/route.ts`):**
+     - In the `GET` handler, immediately after extracting `startDate`, `endDate`, and `employeeId` from `searchParams`, log their raw received values.
+     ```typescript
+     // Example addition in /api/schedule/route.ts
+     const startDate = searchParams.get('startDate');
+     const endDate = searchParams.get('endDate');
+     const employeeId = searchParams.get('employeeId');
+     console.log('API /api/schedule received params - startDate:', startDate, 'endDate:', endDate, 'employeeId:', employeeId);
+     ```
+
+### 2. Detailed Server-Side Logging in `/api/schedule`
+   - **Enhance Logging (`crm/src/app/api/schedule/route.ts`):**
+     - Add more verbose logging within the `GET` handler, particularly around the `try...catch` block for Prisma queries.
+     - Log the exact `where` clause being passed to `prisma.job.findMany()` and `prisma.job.count()`.
+     - If a Prisma error occurs (especially in the `catch (prismaError)` block), log the *entire* `prismaError` object, not just `message` or `code`, to get full context.
+     ```typescript
+     // Example for logging where clause:
+     // const where = { ... };
+     // console.log('Prisma where clause for job query:', JSON.stringify(where, null, 2));
+     // const jobs = await prisma.job.findMany({ where, include: { ... } });
+
+     // Example for logging full Prisma error:
+     // catch (prismaError) {
+     //   console.error('Full Prisma query error object:', prismaError);
+     //   if (prismaError instanceof PrismaClientKnownRequestError) { ... }
+     // }
+     ```
+
+### 3. Analyze the `staff-user-id` Value and Usage
+   - **Database Confirmation:**
+     - Verify if `"staff-user-id"` is the exact, literal ID string stored in the `User` table in your database for the hardcoded staff user. Check `prisma/seed.ts` or query the database directly.
+   - **Contextual Usage:**
+     - Understand if `staff-user-id` is meant to be globally unique and referable like any other CUID, or if its special handling has limitations.
+
+### 4. Consider API Endpoint Responsibility and Data Flow
+   - **Generic Component vs. Specific Use Case:**
+     - The `EmployeeSchedule.tsx` component is designed to show a schedule for a *specific* employee. When `employeeId` is `"staff-user-id"`, the API `/api/schedule` is currently designed to return *all* jobs. This might be an unintendedly large dataset or not the behavior expected for a view supposedly showing one employee's schedule.
+   - **Alternative Data Fetching for `/employees/staff-user-id`:**
+     - Evaluate if the `/employees/[id]/page.tsx`, when `params.id` is `"staff-user-id"`, should:
+       a. Fetch data differently (e.g., use an endpoint that is specifically for this conceptual user, or perhaps not show a detailed schedule but a summary or a link to the main staff dashboard).
+       b. Clearly indicate that it's showing a "global" or "unassigned" schedule if all jobs are indeed returned.
+     - The current behavior might be confusing UI-wise even if the 400 error is fixed.
+
+### 5. Frontend Error Handling and Reporting
+   - **Improve Error Details (`crm/src/components/EmployeeSchedule.tsx`):**
+     - In the `catch` block of `fetchJobs`, if `!response.ok`, try to extract more error information from the `response` object before throwing a generic error.
+     ```typescript
+     // Example enhancement in EmployeeSchedule.tsx catch block:
+     // catch (err) {
+     //   let errorMsg = 'Failed to load schedule';
+     //   if (err.response && typeof err.response.json === 'function') { // Or check if err is the Response object
+     //     try {
+     //       const errorData = await err.response.json();
+     //       errorMsg = errorData.error || errorData.message || errorMsg;
+     //     } catch (jsonError) { /* Ignore if can't parse JSON */ }
+     //   } else if (err.message) {
+     //     errorMsg = err.message;
+     //   }
+     //   setError(errorMsg);
+     //   console.error('Error fetching jobs (EmployeeSchedule):', err, errorMsg);
+     // }
+     ```
+     (Note: the actual error object `err` might be an `Error` instance if `throw new Error()` was used, or it could be the `Response` object if the `fetch` promise rejected directly with it from an external factor.)
+
+## Primary Hypothesis for the 400 Error:
+
+Given that the `/api/schedule` route has explicit logic to handle `employeeId=staff-user-id` (by attempting to show all jobs) and assuming `startDate` and `endDate` are correctly formatted and sent (to be verified by Step 1), the 400 Bad Request is likely due to:
+
+1.  **An unexpected Prisma error (e.g., `P2003` - Foreign Key Constraint Failed)** that occurs when querying for *all* jobs. This could happen if some job records have invalid foreign keys (e.g., `clientId`, or even an `assignedToId` that is problematic, even if not directly filtered on by `staff-user-id`). The "show all jobs" query might expose these data integrity issues.
+2.  A subtle issue with how `startDate` or `endDate` (despite being ISO strings) are parsed or used by Prisma specifically in conjunction with the "show all jobs" logic triggered by `staff-user-id`.
+
+**The detailed server-side logging from Step 2 is the most critical diagnostic to confirm or refute these hypotheses and pinpoint the exact stage where the request fails within the API handler.**
+
+Once the root cause is identified, the fix might involve:
+- Adjusting the Prisma query in `/api/schedule` to be more resilient.
+- Correcting data integrity issues in the database.
+- Modifying how the `/employees/staff-user-id` page fetches or displays schedule data.
+- Ensuring `staff-user-id` is consistently and correctly used if it's a legitimate database ID.

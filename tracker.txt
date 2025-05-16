@@ -1,563 +1,281 @@
-# GreenLead – Project Overview & Developer Onboarding Guide
+# GreenLead – Project Status & Bug Tracking
 
-_Last updated: 2024-07-10_
-
----
-
-## 📋 Project Summary
-GreenLead is a modern customer relationship management system built specifically for landscape businesses. It provides comprehensive tools for job scheduling, client management, employee management, estimates, and more. The system is designed with multi-role access (Admin, Manager, Staff, and future Client portal) with robust authentication and a modular, type-safe codebase. The application features a subscription-worthy feature set justifying a $200/month price point.
+_Last updated: 2025-07-24_
 
 ---
 
-## 🏗️ Architecture & Tech Stack
-- **Frontend:** Next.js 14+ (App Router, React, TypeScript), Material-UI (MUI), Framer Motion
+## 📋 Current Status Summary
+GreenLead is a customer relationship management system for landscape businesses, featuring job scheduling, client management, estimates, and employee management. The system uses role-based access (Admin, Manager, Staff) with NextAuth authentication. The app is built with Next.js, Prisma ORM, and PostgreSQL.
+
+---
+
+## 🔴 Current Critical Issues
+
+### 1. User Experience Improvements
+- **Mobile responsiveness**: Staff views need optimization for field use
+- **Performance optimizations**: Dashboard loading could be more efficient
+- **Error state handling**: Improve user feedback for edge cases
+
+### 2. Feature Enhancements
+- **Advanced reporting**: Need more comprehensive business analytics
+- **Client portal**: Future development of client-facing interface
+- **Invoice generation**: Extend the estimate system to handle invoicing
+
+---
+
+## 🟠 Recently Fixed Issues
+
+### 1. Authentication & Session Issues
+- **Session data missing companyId**: Fixed JWT token to include companyId
+- **Role-based redirection inconsistent**: Fixed redirection logic based on user roles
+- **NextAuth session not propagating user data**: Corrected JWT and session callbacks
+- **Hardcoded staff credentials**: Removed problematic hardcoding that bypassed security
+- **Registration token issues**: Added companyId to registration JWT token
+
+### 2. Multi-tenant Data Isolation
+- **Employee data leakage**: Fixed serious security issue showing all companies' employees
+- **Prisma errors when creating employees**: Added companyId to all employee operations
+- **Missing company boundaries**: Added companyId filtering to all employee endpoints
+- **Permission issues**: Improved role-based access control across the application
+
+### 3. Development Tools
+- **Mock data generation**: Added admin tool to generate realistic test data
+- **Prisma enum handling**: Fixed enum type issues in job and estimate creation
+- **Improved error messages**: Added descriptive error messages for easier debugging
+
+---
+
+## 🟡 In Progress Work
+
+### 1. API Refinements
+- **GraphQL consideration**: Evaluating benefits of GraphQL implementation
+- **API documentation**: Creating comprehensive API documentation
+- **Rate limiting**: Planning to implement rate limiting for API endpoints
+
+### 2. Security Enhancements
+- **CSRF protection**: Adding cross-site request forgery protections
+- **Security headers**: Implementing additional security headers
+- **Attack surface reduction**: Minimizing unnecessary API exposure
+
+---
+
+## 🟢 Tech Stack & Architecture
+
+- **Frontend:** Next.js 14+ (App Router, React, TypeScript), Material-UI (MUI)
 - **Backend:** Next.js API routes (App Router), Prisma ORM
 - **Database:** PostgreSQL (schema in `prisma/schema.prisma`)
 - **Authentication:** NextAuth.js (credentials provider, session-based)
 - **Type Safety:** TypeScript throughout, custom types for session/user
-- **Deployment:** Render (web service + PostgreSQL database)
-- **Project Structure:** All code and config are inside the `/crm` folder
-- **Maps Integration:** Google Maps API for route optimization
 
 ---
 
-## 🚀 Current Features
+## 🛠️ Current Features (Working)
+
 - Public marketing homepage for unauthenticated users
-- User authentication and session management with role-based access
-- Middleware-based authentication routing
-- Role-based user model (Admin, Manager, Staff)
-- Job, client, and estimate management (CRUD)
-- Enhanced scheduling with multiple calendar views and drag-and-drop capabilities
-- Route optimization using Google Maps API for daily job scheduling
-- Staff overview panel with workload visualization and conflict detection
-- Employee management (list, add, edit, delete)
-- Job notes system (CRUD, inline editing)
-- Owner task flagging with customizable color coding
-- Estimates module with multi-step creation workflow
-- Materials management with categorization and bulk operations
-- Saved items system for quick estimate creation
-- Email functionality with PDF generation for estimates
-- Company branding and customization options (colors, logo, fonts)
-- Estimate templates for saving groups of commonly used items
-- Settings management with company profile and branding preferences
-- Defensive error handling and robust API validation
-- Modular, type-safe codebase
+- User authentication with role-based model (Admin, Manager, Staff)
+- Job and estimate management (fully functional)
+- Schedule views with calendar integration
+- Route optimization using Google Maps API
+- Job notes system
+- Photo management for jobs
+- Multi-tenant data isolation
+- Mock data generation for testing
 
 ---
 
-## 👥 User Roles & Permissions
-- **Admin:** Full access to all features and data (users, jobs, clients, estimates, notes)
-- **Manager:** Manage jobs, clients, view all employees, but cannot manage admin users
-- **Staff/Employee:** View/update their own jobs and notes, limited client data
-- **Client:** (Planned) Will have limited access to their own jobs and estimates
-- **Permissions are enforced in API routes** by checking `session.user.role` and `session.user.id` before DB operations
+## 🔧 Debugging Notes & Solutions
 
----
+### 1. Session & Authentication Fixes
 
-## ✅ What Works
-- Deployed to Render with proper environment configuration
-- Public landing page with professional marketing content
-- Authentication flow with protected routes and redirects
-- Admins can manage all data
-- Employees can view their assigned jobs and notes
-- Enhanced schedule/calendar with multiple views and drag-and-drop functionality
-- Route optimization for daily jobs using Google Maps API
-- Complete estimates management system with materials catalog
-- Streamlined client creation within the estimate workflow
-- Email system for sending estimates as PDF attachments
-- All API endpoints require authentication and check user existence
-- Proper UI layout and navigation integration
-- Defensive coding and error handling throughout
+#### Problem:
+Authentication issues were causing API failures and incorrect redirects, particularly with missing companyId.
 
-## 🛠️ Recent Improvements
+#### Solution:
+1. Removed hardcoded staff credentials that bypassed normal authentication:
+```typescript
+// Old problematic code in auth.ts
+if (credentials.email === 'staff@gmail.com' && credentials.password === 'staff') {
+  return {
+    id: "staff-user-id",
+    name: "Staff User",
+    email: "staff@gmail.com",
+    role: "STAFF",
+    // Missing companyId!
+  };
+}
 
-### Enhanced Scheduling System
-- **Multiple Calendar Views:** Implemented daily, weekly, monthly, and list view options
-- **Staff Overview Panel:** Added visualized workload display and employee allocation
-- **Drag-and-Drop Functionality:** Jobs can be easily rescheduled through drag interactions
-- **Conflict Detection:** System automatically detects overlapping schedules and warns users
-- **Search and Filtering:** Enhanced search capabilities by employee, client, or job type
-- **Owner Task Flagging:** Added ability to flag tasks for business owner attention with color coding
-- **Visual Enhancements:** Improved calendar UI with clearer job indicators and status coloring
-- **Date Navigation Menu:** Added quick date navigation with Today, Previous/Next Week/Month options
-- **Employee Filtering:** Enhanced Staff Panel to distinguish between employees with jobs and available staff
-- **Direct Route Viewing:** Added buttons to quickly view routes for specific employees
+// New solution: Removed hardcoding and always access the database
+const user = await prisma.user.findUnique({
+  where: { email: credentials.email },
+});
+if (!user) return null;
 
-### Route Optimization
-- **Google Maps Integration:** Implemented Google Maps API for route planning and optimization
-- **Daily Route Generation:** Auto-generates optimal routes for daily job schedules 
-- **Job Sequencing:** Intelligently orders jobs to minimize travel time between locations
-- **Map Visualization:** Visual representation of routes with job markers and directions
-- **Distance and Time Estimation:** Calculates estimated travel time between jobs
-- **Driver Instructions:** Provides turn-by-turn directions for field staff
-- **Schedule Adjustments:** Allows manual reordering of jobs with route recalculation
-- **Multiple Crew Support:** Handles multiple crews with separate optimized routes
-- **Employee-Specific Routes:** Added ability to view routes for specific employees
-- **Enhanced Date Selection:** Improved date selection in the RouteOptimizer component
+// Compare password
+const isValid = await bcrypt.compare(credentials.password, user.password);
+if (!isValid) return null;
 
-### Deployment & Infrastructure
-- **Render Deployment:** Successfully deployed to Render's cloud platform
-- **Database Setup:** PostgreSQL database configured and migrated on Render
-- **Environment Configuration:** Set up environment variables for production
-- **Authentication Security:** Properly configured NextAuth.js for production
-- **API Key Management:** Added secure handling of Google Maps API keys
+// Return complete user object with companyId
+return {
+  id: user.id,
+  name: user.name,
+  email: user.email,
+  role: user.role,
+  companyId: user.companyId,
+};
+```
 
-### Authentication & Routing
-- **Public Homepage:** Created marketing landing page for unauthenticated users
-- **Authentication Flow:** Improved login/register pages with proper redirects
-- **Middleware Implementation:** Added NextAuth middleware for route protection
-- **Session Management:** Enhanced session handling and role-based access
+2. Fixed the staff creation endpoint to ensure proper companyId:
+```typescript
+// Create or find default company for staff users
+let defaultCompany = await prisma.company.findFirst({
+  where: { name: 'Demo Company' }
+});
 
-### UI/UX Enhancements
-- **Fixed Navigation Integration:** Properly integrated navigation component with all pages
-- **Layout Improvements:** Corrected spacing, padding, and margins to prevent content overlap
-- **Card Interactivity:** Added hover effects and proper click handling to cards
-- **Action Button Handling:** Fixed action buttons to prevent triggering card clicks
-- **User Profile Integration:** Ensured proper spacing for user profile dropdown
-- **Empty States:** Added proper handling for empty states and loading conditions
-- **Responsive Design:** Improved mobile and desktop layouts across all interfaces
-- **Enhanced Staff Panel:** Visual distinction between staff with and without jobs
-- **Schedule Toolbar:** Added date navigation menu with quick access options
-- **Drag-and-Drop Improvements:** Enhanced drag-and-drop for job scheduling and assignment
+if (!defaultCompany) {
+  defaultCompany = await prisma.company.create({
+    data: { name: 'Demo Company' }
+  });
+}
 
-### Technical Improvements
-- **DOM Validation:** Fixed DOM nesting validation errors in components
-- **Tooltip Integration:** Fixed tooltip wrapper issues with Material UI
-- **Form Data Persistence:** Implemented form data persistence during navigation
-- **API Robustness:** Enhanced error handling and validation in API endpoints
-- **Type Safety:** Improved TypeScript typing throughout the application
-- **Infinite Update Loop Fix:** Resolved rendering issues in the JobForm component
-- **Type Compatibility:** Fixed issues between Job and ExtendedJob types
-- **State Update Typing:** Improved typing for setFilters function to handle state updates properly
+// Create staff user with companyId
+await prisma.user.create({
+  data: {
+    email: 'staff@gmail.com',
+    name: 'Staff User',
+    password: hashedPassword,
+    role: UserRole.STAFF,
+    companyId: defaultCompany.id, // Assign to company
+  },
+});
+```
 
-## 🛠️ What Needs Work
-- **Role-based UI:** Separate dashboards/pages for Admin, Employee, and (future) Client
-- **Granular permissions:** Enforce permissions in all API routes (e.g., only admins can manage users, employees can only see their jobs)
-- **Client portal:** Not yet implemented
-- **Session/role propagation:** Ensure role is always present in session and available client/server-side
-- **Integration tests:** Add tests for role-based access and permissions
-- **CI/CD Pipeline:** Set up continuous integration and deployment workflow
-- **Route Optimization Enhancements:** Add traffic-aware routing and time window constraints
+### 2. Multi-tenant Data Isolation
 
----
+#### Problem:
+Employee listings showed users from all companies, creating a major security issue.
 
-## 🧰 Schedule Module & Route Optimization
+#### Solution:
+Updated all employee API endpoints to filter by companyId:
 
-### 1. Enhanced Scheduling Overview
-The scheduling module has been completely redesigned with these key features:
+```typescript
+// Filter employees by the current user's company ID
+const employees = await prisma.user.findMany({
+  where: {
+    companyId: session.user.companyId, // Only show employees from same company
+  },
+  // ... other query parameters
+});
+```
 
-- **Multiple Calendar Views:** Switch between day, week, month, and list views
-- **Staff Overview Panel:** Visual representation of employee workloads and assignments
-- **Drag-and-Drop Functionality:** Intuitive job rescheduling through drag operations
-- **Conflict Detection:** Automatic detection and warning for scheduling conflicts
-- **Owner Task Flagging:** Mark tasks specifically for owner attention with priority flags
-- **Custom Flag Colors:** Color-code tasks (red, orange, green, blue, purple) by priority or category
-- **Search and Filter:** Comprehensive filtering by employee, job type, status, and date range
-- **Quick Date Navigation:** Enhanced date menu with Today, Previous/Next Week/Month options
-- **Employee Status Visualization:** Visual distinction between employees with jobs and available staff
-- **Direct Route Access:** Buttons to immediately view route for specific employees
+Also added additional security checks:
+```typescript
+// Verify target employee exists and is in the same company
+const targetEmployee = await prisma.user.findFirst({
+  where: { 
+    id: params.id,
+    companyId: session.user.companyId // Ensure employee is from the same company
+  },
+});
 
-### 2. Schedule Components
-
-The enhanced schedule system uses a modular component architecture:
-
-- **`scheduleHelpers.ts`:** Utility functions for date manipulation and job handling
-- **`useScheduleData.tsx`:** Custom hook for centralized schedule data management
-- **`useDragDrop.tsx`:** Hook implementing drag-and-drop functionality
-- **`ScheduleToolbar.tsx`:** Controls for view switching, date navigation, and filtering
-- **`StaffPanel.tsx`:** Sidebar showing employee workload and allocation
-- **`CalendarView.tsx`:** Container for day, week, and month calendar views
-- **`ListView.tsx`:** Alternative tabular view of scheduled jobs
-- **`JobForm.tsx`:** Enhanced job creation/editing with owner task flagging
-
-### 3. Owner Task Flagging
-
-A new feature allows flagging tasks specifically for owner attention:
-
-- **Flag Checkbox:** Simple toggle to mark a task for owner attention
-- **Color Coding:** Select from color options (red, orange, green, blue, purple)
-- **Special Formatting:** Flagged tasks display with "[OWNER]" prefix and color indicator
-- **Priority Visibility:** Flagged tasks stand out in all calendar views
-- **Filtering:** Ability to filter and view only owner tasks
-
-### 4. Route Optimization System
-
-The route optimization feature leverages Google Maps to create efficient daily routes:
-
-#### Core Features
-- **Automatic Route Planning:** Generate optimized routes for daily job schedules
-- **Multiple Driver Support:** Create separate routes for different crews/vehicles
-- **Interactive Map:** Visual display of all job locations with optimized route path
-- **Time Estimates:** Calculate travel time between jobs and total route duration
-- **Manual Adjustments:** Allow manual reordering with route recalculation
-- **Turn-by-Turn Directions:** Provide detailed driving instructions to staff
-- **Job Details Access:** View job information directly from map markers
-- **Employee-Specific Routes:** Filter routes by specific employees
-- **Enhanced Date Selection:** Improved date navigation within the route optimizer
-
-#### Technical Implementation
-- **Google Maps API Integration:** Uses Distance Matrix API and Directions Service
-- **Geocoding:** Converts client addresses to coordinates for mapping
-- **Algorithm:** Implements nearest neighbor with optimization for route efficiency
-- **State Management:** Centralized state for route data with React context
-- **Mobile Responsiveness:** Fully responsive map interface for field use on mobile devices
-- **Offline Capabilities:** Caches route data for areas with limited connectivity
-
-#### Workflow
-1. User selects a date and employee/crew
-2. System gathers all scheduled jobs for that date/crew
-3. Addresses are geocoded to map coordinates
-4. Optimization algorithm determines the most efficient job sequence
-5. Route is displayed visually on the map with sequential markers
-6. Travel time and distance estimates are calculated
-7. Directions can be exported or shared with field staff
-
----
-
-## 🛡️ Roadmap: Role-Based Access & Permissions
-1. **Define Roles & Permissions:** Finalize and document all role capabilities
-2. **API Enforcement:** Audit and update all API routes for proper role checks
-3. **Frontend UI/UX:** Refactor navigation and dashboards to show/hide features by role
-4. **Client Portal:** Plan and scaffold a limited-access UI and API for clients
-5. **Testing:** Add integration tests for permissions and role-based UI
-6. **Documentation:** Keep this tracker and dbConfg.txt updated with all changes
-
----
-
-## 🧑‍💻 Developer Onboarding Steps
-1. **Clone the repo and `cd crm`**
-2. **Install dependencies:** `npm install`
-3. **Set up `.env`** with correct `DATABASE_URL`, `NEXTAUTH_SECRET`, `NEXTAUTH_URL`, and `GOOGLE_MAPS_API_KEY`
-4. **Run migrations:** `npx prisma migrate dev --name init`
-5. **Seed the database:** `npx prisma db seed` (optional)
-6. **Start the app:** `npm run dev`
-7. **Inspect the DB:** `npx prisma studio`
-8. **Review code structure:** Familiarize yourself with `/src/app`, `/prisma`, and `/components`
-9. **Check tracker.txt and dbConfg.txt** for latest project state and guidance
-
----
-
-## 🚀 Deployment Instructions
-1. **Create a Render account** if you don't have one
-2. **Set up a PostgreSQL database** on Render
-3. **Create a web service** pointing to your GitHub repository
-4. **Configure environment variables:**
-   - `DATABASE_URL` - Your Render PostgreSQL connection string
-   - `NEXTAUTH_SECRET` - A secure random string for JWT signing
-   - `NEXTAUTH_URL` - Your production URL (e.g., https://yourdomain.onrender.com)
-   - `GOOGLE_MAPS_API_KEY` - Your Google Maps API key with required services enabled
-5. **Deploy your application** through Render dashboard or GitHub integration
-6. **Apply database migrations:**
-   ```bash
-   $env:DATABASE_URL="your_render_postgres_connection_string"
-   npx prisma migrate deploy
-   ```
-7. **Seed the database** with initial data:
-   ```bash
-   npx prisma db seed
-   ```
-
----
-
-## 🛠️ Troubleshooting Tips
-- **Prisma errors:** Check for missing relations, enum mismatches, or invalid data
-- **Connection errors:** Check `DATABASE_URL` and ensure PostgreSQL is running
-- **Session errors:** Ensure NextAuth.js is configured and sessions are valid
-- **API errors:** Check terminal logs for backend errors and browser console for frontend issues
-- **Google Maps issues:** Verify API key has correct services enabled (Directions, Distance Matrix, Geocoding)
-- **After schema changes:** Run migrations and regenerate Prisma client
-- **Restart dev server** after changes to `.env`, `next.config.js`, or Prisma schema
-- **UI Layout Issues:** Check component nesting, z-index values, and padding/margin properties
-- **Deployment issues:** Check Render logs for any build or runtime errors
-- **Update loop errors:** Check for object recreations in component render functions and useEffect dependencies
-
----
-
-## 📱 Public Home Page & Authentication Flow
-
-The application now features a comprehensive authentication flow:
-
-### Public Home Page
-- **Marketing Landing Page:** Professional landing page for unauthenticated users
-- **Feature Showcase:** Highlights key features of the GreenLead platform
-- **Call-to-Action:** Clear CTAs for signup and login
-- **Responsive Design:** Fully responsive for all device sizes
-
-### Authentication Flow
-- **Protected Routes:** All authenticated routes are protected via middleware
-- **Route Redirection:**
-  - Unauthenticated users trying to access protected routes are redirected to the home page
-  - Authenticated users trying to access public routes (login/register) are redirected to the dashboard
-- **Login & Registration:**
-  - Enhanced login page with form validation
-  - Registration page with real-time field validation
-  - Form data persistence to prevent data loss
-  - Clear error messaging for authentication failures
-- **Session Management:**
-  - JWT-based authentication via NextAuth.js
-  - Role information stored in the session token
-  - Proper session expiration and renewal
-
----
-
-## 🧰 Estimates Module Implementation Details
-
-### 1. Estimates Overview
-The estimates module provides a comprehensive solution for creating, managing, and tracking project estimates. Key features include:
-
-- **Estimate Listing:** View all estimates with filtering and search capabilities
-- **Multi-step Estimate Creation:** Guided workflow for creating detailed estimates
-- **Line Item Management:** Add, edit, and remove line items with automatic total calculation
-- **Materials Management:** Categorized materials catalog with bulk operations
-- **Client Creation:** Create new clients directly within the estimate workflow
-- **Saved Items:** Store and reuse common materials and services
-- **Duplicate Function:** Clone existing estimates for similar projects
-- **Status Tracking:** Track estimate status (Draft, Sent, Accepted, Rejected, Expired)
-- **PDF Generation:** Create professional PDFs of estimates
-- **Email Integration:** Send estimates directly to clients with PDF attachments
-
-### 2. Database Models
-
-#### Estimate Model
-```prisma
-model Estimate {
-  id          String         @id @default(cuid())
-  title       String
-  description String
-  status      EstimateStatus @default(DRAFT)
-  price       Float
-  validUntil  DateTime
-  clientId    String
-  createdById String
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
-  client      Client         @relation(fields: [clientId], references: [id])
-  createdBy   User           @relation("CreatedEstimates", fields: [createdById], references: [id])
-  jobs        Job[]
-  lineItems   LineItem[]
+if (!targetEmployee) {
+  return NextResponse.json({ error: 'Employee not found or not in your company' }, { status: 404 });
 }
 ```
 
-#### LineItem Model
-```prisma
-model LineItem {
-  id          String   @id @default(cuid())
-  description String
-  quantity    Int
-  unitPrice   Float
-  total       Float
-  estimateId  String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  estimate    Estimate @relation(fields: [estimateId], references: [id])
-}
+### 3. Mock Data Generation
+
+#### Problem:
+No easy way to test the system with realistic data.
+
+#### Solution:
+Added a mock data generator with admin dashboard button:
+
+```typescript
+// Created API endpoint using appropriate Prisma enums
+import { JobType, EstimateStatus, JobStatus } from '@prisma/client';
+
+// Job types from schema - using proper enum values
+const jobTypes = [
+  JobType.LAWN_MAINTENANCE,
+  JobType.LANDSCAPE_DESIGN,
+  JobType.TREE_SERVICE,
+  JobType.IRRIGATION,
+  JobType.HARDSCAPING,
+  JobType.CLEANUP,
+  JobType.PLANTING,
+  JobType.FERTILIZATION
+];
+
+// Added real addresses for mapping/routing functionality
+const realLocations = [
+  { city: 'New York', state: 'NY', zip: '10001' },
+  { city: 'Los Angeles', state: 'CA', zip: '90001' },
+  // ... more locations
+];
 ```
-
-#### SavedItem Model
-```prisma
-model SavedItem {
-  id          String   @id @default(cuid())
-  description String
-  unitPrice   Float
-  quantity    Int      @default(1)
-  category    String?  @default("Other")
-  userId      String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  user        User     @relation("UserSavedItems", fields: [userId], references: [id])
-  templateItems TemplateItem[]
-}
-```
-
-#### EstimateTemplate Model
-```prisma
-model EstimateTemplate {
-  id          String   @id @default(cuid())
-  name        String
-  description String?
-  userId      String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  user        User     @relation("UserEstimateTemplates", fields: [userId], references: [id])
-  items       TemplateItem[]
-}
-```
-
-#### UserSettings Model
-```prisma
-model UserSettings {
-  id                 String   @id @default(cuid())
-  userId             String   @unique
-  companyName        String?
-  companyLogo        String?
-  primaryColor       String?
-  secondaryColor     String?
-  accentColor        String?
-  fontPrimary        String?
-  fontSecondary      String?
-  addressLine1       String?
-  addressLine2       String?
-  city               String?
-  state              String?
-  zipCode            String?
-  phoneNumber        String?
-  emailAddress       String?
-  website            String?
-  taxRate            Float?   @default(0)
-  defaultEstimateTerms String? @db.Text
-  emailSignature     String? @db.Text
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
-  user               User     @relation(fields: [userId], references: [id])
-}
-```
-
-### 3. Materials Management System
-
-The materials management system provides a dedicated interface for managing commonly used materials:
-
-- **Located at `/estimates/materials`**
-- **Features:**
-  - Categorized materials organization (Landscaping, Garden, Hardscape, Tools, Equipment, etc.)
-  - Category-based filtering and search functionality
-  - Individual material creation with detailed attributes
-  - Bulk materials import for efficient setup
-  - Default quantity settings for each material
-  - Integration with estimate creation workflow
-  - Custom category management
-
-- **Workflow:**
-  1. Users can create materials individually with description, price, and category
-  2. Bulk import allows adding multiple materials at once via CSV-like format
-  3. Materials are categorized for easy filtering and organization
-  4. During estimate creation, users can browse the materials catalog
-  5. Users can add materials directly to estimates with predefined pricing
-
-### 4. Estimate Creation Workflow
-
-The estimate creation process uses a multi-step wizard approach:
-
-#### Step 1: Client Selection
-- **Select existing client from dropdown**
-- **Create new client directly in the workflow:**
-  - Complete client form with validation
-  - Client information is saved and linked to the estimate
-  - New client is automatically selected for the current estimate
-
-#### Step 2: Estimate Details
-- **Enter estimate title and description**
-- **Set validity period for the estimate**
-- **Input any special terms or conditions**
-
-#### Step 3: Line Items
-- **Add line items manually:**
-  - Description
-  - Quantity
-  - Unit price
-  - Automatic total calculation
-- **Add items from saved materials catalog:**
-  - Browse categorized materials
-  - Search for specific materials
-  - Add with predefined pricing and quantities
-- **Add items from estimate templates:**
-  - Save time by using predefined groups of items
-  - Customize quantities as needed
-- **Direct access to materials management**
-
-#### Step 4: Review & Create
-- **Review all estimate details:**
-  - Client information
-  - Estimate details
-  - Line items list with quantities and pricing
-  - Total price calculation
-- **Create the estimate and save to the database**
-
-### 5. Email & PDF Generation
-
-The estimate email system allows users to send professional estimates directly to clients:
-
-- **Email Interface:**
-  - Accessible from estimate listing or detail view
-  - Pre-filled recipient (client email), subject, and message
-  - Option to send copy to sender
-  - Professional formatting with company branding
-
-- **PDF Generation:**
-  - Creates professional PDF with company branding
-  - Includes all estimate details and line items
-  - Formats pricing information clearly
-  - Includes terms and conditions
-  - Shows company contact information
-
-- **Status Management:**
-  - Automatically updates estimate status from DRAFT to SENT when emailed
-  - Tracks when emails are sent
-  - Allows re-sending of estimates with notification
-
-### 6. UI Components and Layout Improvements
-
-Recent UI enhancements to the estimates module include:
-
-- **Estimates Page Layout:**
-  - Proper integration with Navigation component
-  - Fixed padding and margins to prevent content overlap
-  - Proper spacing for user profile dropdown
-  - Responsive design for mobile and desktop
-
-- **Estimate Cards:**
-  - Enhanced interactivity with hover effects
-  - Fixed action buttons to prevent triggering card clicks
-  - Clear status indicators with appropriate colors
-  - Improved spacing and typography
-
-- **Search and Filtering:**
-  - Improved search functionality by title or client
-  - Clear empty states with helpful messages
-  - Loading indicators during data fetching
-
-- **Action Buttons:**
-  - Tooltip-enabled action buttons for common operations
-  - Email, edit, duplicate, and delete functions
-  - Proper event propagation handling
-
-### 7. API Architecture
-
-The estimates module uses several API endpoints:
-
-- `/api/estimates` - List, create, and filter estimates
-- `/api/estimates/[id]` - Get, update, and delete specific estimates
-- `/api/estimates/[id]/duplicate` - Clone existing estimates
-- `/api/estimates/[id]/email` - Email estimates to clients
-- `/api/saved-items` - Manage saved materials and line items
-- `/api/saved-items/[id]` - Manage individual saved items
-- `/api/estimate-templates` - Manage reusable estimate templates
-- `/api/settings` - Manage user and company settings for branding
-
-### 8. Future Enhancements
-
-Planned enhancements for the estimates module:
-
-- **Client Portal:** Allow clients to view and approve estimates online
-- **Advanced Templates:** More powerful templating with sections and categories
-- **Pricing Rules:** Dynamic pricing based on client type, project size, etc.
-- **Historical Analytics:** Track estimate conversion rates and profitability
-- **Integration with external accounting systems**
-- **Digital Signature Support:** Allow clients to digitally sign and approve
 
 ---
 
-## 🛣️ Long-Term Roadmap
-- Full client portal implementation
-- Advanced analytics and reporting
-- Enhanced notifications system with email and SMS options
-- Calendar integration with external services (Google, Outlook)
-- Mobile application for field workers
-- Offline capabilities for remote work areas
-- More granular permissions (e.g., per-client, per-job)
-- Integration with external services (payment processors, accounting)
-- Advanced route optimization with traffic patterns and time windows
-- Automated testing and CI/CD
+## 🗺️ Next Steps & Priorities
+
+### 1. High Priority
+- **Complete API review**: Ensure all endpoints enforce company boundaries
+- **Add unit tests**: Increase test coverage, particularly for authentication
+- **Performance profiling**: Identify and fix potential performance bottlenecks
+
+### 2. Medium Priority
+- **Enhanced analytics**: Add more business intelligence features
+- **User onboarding**: Improve first-time user experience
+- **Email notifications**: Implement email notifications for key events
+
+### 3. Low Priority
+- **Theme customization**: Allow company-specific branding
+- **Export/import functionality**: Add data export and import features
+- **Integration APIs**: Build third-party integration endpoints
 
 ---
 
-# End of Log (2024-07-10)
+## 🤖 Troubleshooting Steps
+
+### For Authentication Issues
+1. **Check console logs** for "Unauthorized" or session-related errors
+2. **Inspect session data** in the browser (localStorage/cookies)
+3. **Verify JWT token contains companyId** using browser devtools
+4. **Check middleware.ts** for correct route protection logic
+5. **Verify user creation** in registration flow (correct role and companyId)
+
+### For API 401 Errors
+1. **Check request headers** for presence of authentication cookies
+2. **Inspect API endpoint code** for proper session validation
+3. **Verify Prisma queries** include proper company filtering
+4. **Log session data** at beginning of API route handlers
+5. **Check database** for correct user-company associations
+
+---
+
+## 🔍 Key API Routes to Check
+
+- `/api/auth/register`: Ensure proper company and user creation
+- `/api/auth/[...nextauth]`: NextAuth configuration and callbacks
+- `/api/employees`: Check for proper company ID filtering
+- `/api/clients`: Verify company ID handling in client management
+- `/api/mock-data`: Test data generation utility
+
+---
+
+## 📈 Progress Tracking
+
+| Issue | Status | Priority | Notes |
+|-------|--------|----------|-------|
+| Session missing companyId | Fixed | High | Updated NextAuth callbacks and removed hardcoded staff |
+| Data leakage across companies | Fixed | Critical | Added companyId filtering to employee endpoints |
+| Role-based redirection issues | Fixed | High | Corrected dashboard redirect logic |
+| Debug role switcher causing problems | Fixed | Medium | Component completely disabled |
+| Mock data generation | Completed | Medium | Added admin tool with configurable settings |
+| API authorization security | Fixed | High | Improved company boundary enforcement |
+| Client creation errors | Fixed | High | Added proper companyId to all creation requests |
+
+---
+
+# End of Current Status (2025-07-24)
+

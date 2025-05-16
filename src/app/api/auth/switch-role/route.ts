@@ -16,6 +16,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
+    // Don't allow role changes for staff@gmail.com
+    if (session.user.email === 'staff@gmail.com') {
+      return NextResponse.json({ error: "Cannot change role for this user" }, { status: 403 });
+    }
+
     const { role } = await req.json();
     if (!role || !Object.values(UserRole).includes(role)) {
       return NextResponse.json({ error: "Invalid role" }, { status: 400 });
