@@ -40,6 +40,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import CategoryIcon from '@mui/icons-material/Category';
 import LineItemForm from './LineItemForm';
 import SavedItemsDrawer from './SavedItemsDrawer';
+import { JobType } from '@prisma/client';
 
 const steps = ['Client Information', 'Estimate Details', 'Line Items', 'Review'];
 
@@ -70,6 +71,7 @@ export default function AddEstimateDialog({ open, onClose }) {
     title: '',
     description: '',
     clientId: '',
+    jobType: '',
     validUntil: new Date(new Date().setMonth(new Date().getMonth() + 1)), // Default 30 days from now
     lineItems: [],
   });
@@ -136,6 +138,7 @@ export default function AddEstimateDialog({ open, onClose }) {
       title: '',
       description: '',
       clientId: '',
+      jobType: '',
       validUntil: new Date(new Date().setMonth(new Date().getMonth() + 1)),
       lineItems: [],
     });
@@ -419,6 +422,23 @@ export default function AddEstimateDialog({ open, onClose }) {
         multiline
         rows={4}
       />
+      <FormControl fullWidth margin="normal">
+        <InputLabel id="job-type-label">Job Type</InputLabel>
+        <Select
+          labelId="job-type-label"
+          id="jobType"
+          name="jobType"
+          value={formData.jobType}
+          onChange={handleInputChange}
+          label="Job Type"
+        >
+          {Object.values(JobType).map((type) => (
+            <MenuItem key={type} value={type}>
+              {type.replace('_', ' ')}
+            </MenuItem>
+          ))}
+        </Select>
+      </FormControl>
       <LocalizationProvider dateAdapter={AdapterDateFns}>
         <DatePicker
           label="Valid Until"

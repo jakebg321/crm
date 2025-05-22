@@ -31,6 +31,7 @@ import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EmailIcon from '@mui/icons-material/Email';
 import CategoryIcon from '@mui/icons-material/Category';
+import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh';
 import AddEstimateDialog from './components/AddEstimateDialog';
 import { formatCurrency, formatDate } from '@/utils/formatters';
 import Navigation from '@/components/Navigation';
@@ -225,11 +226,28 @@ export default function EstimatesPage() {
         }}
       >
         <Container maxWidth="xl" sx={{ mt: 2 }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3, alignItems: 'center' }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
             <Typography variant="h4" component="h1">
               Estimates
             </Typography>
             <Box>
+              <Button
+                variant="outlined"
+                color="primary"
+                startIcon={<AutoFixHighIcon />}
+                onClick={() => router.push('/estimates/ai')}
+                sx={{ mr: 2 }}
+              >
+                AI Estimate
+              </Button>
+              <Button
+                variant="outlined"
+                startIcon={<AutoFixHighIcon />}
+                onClick={() => router.push('/estimates/materials/ai')}
+                sx={{ mr: 2 }}
+              >
+                AI Materials
+              </Button>
               <Button
                 variant="outlined"
                 startIcon={<CategoryIcon />}

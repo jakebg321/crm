@@ -37,6 +37,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import SearchIcon from '@mui/icons-material/Search';
 import CategoryIcon from '@mui/icons-material/Category';
+import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh';
 import { formatCurrency } from '@/utils/formatters';
 
 // Predefined categories for materials
@@ -307,6 +308,14 @@ export default function MaterialsPage() {
           Materials & Items
         </Typography>
         <Box>
+          <Button
+            variant="outlined"
+            startIcon={<AutoFixHighIcon />}
+            onClick={() => router.push('/estimates/materials/ai')}
+            sx={{ mr: 1 }}
+          >
+            AI Materials Estimator
+          </Button>
           <Button
             variant="outlined"
             startIcon={<AddIcon />}

@@ -1,281 +1,355 @@
-# GreenLead – Project Status & Bug Tracking
+# GreenLead – AI Integration Plan
 
-_Last updated: 2025-07-24_
+_Last updated: 2025-08-10_
 
 ---
 
 ## 📋 Current Status Summary
-GreenLead is a customer relationship management system for landscape businesses, featuring job scheduling, client management, estimates, and employee management. The system uses role-based access (Admin, Manager, Staff) with NextAuth authentication. The app is built with Next.js, Prisma ORM, and PostgreSQL.
+GreenLead is a CRM system for landscape businesses that needs to integrate OpenAI for enhancing the estimate creation process. The application is built with Next.js, Prisma ORM, and PostgreSQL, using role-based access (Admin, Manager, Staff) with NextAuth authentication.
 
 ---
 
-## 🔴 Current Critical Issues
+## 🔄 AI Integration Overview
 
-### 1. User Experience Improvements
-- **Mobile responsiveness**: Staff views need optimization for field use
-- **Performance optimizations**: Dashboard loading could be more efficient
-- **Error state handling**: Improve user feedback for edge cases
+### 1. Primary Integration Goals
+- **Smart Estimate Generation**: Use AI to create accurate estimates based on job descriptions
+- **Price Optimization**: Analyze historical data to suggest optimal pricing
+- **Material Recommendations**: Automatically suggest appropriate materials for specific job types
+- **Natural Language Processing**: Allow users to describe jobs in plain language
 
-### 2. Feature Enhancements
-- **Advanced reporting**: Need more comprehensive business analytics
-- **Client portal**: Future development of client-facing interface
-- **Invoice generation**: Extend the estimate system to handle invoicing
-
----
-
-## 🟠 Recently Fixed Issues
-
-### 1. Authentication & Session Issues
-- **Session data missing companyId**: Fixed JWT token to include companyId
-- **Role-based redirection inconsistent**: Fixed redirection logic based on user roles
-- **NextAuth session not propagating user data**: Corrected JWT and session callbacks
-- **Hardcoded staff credentials**: Removed problematic hardcoding that bypassed security
-- **Registration token issues**: Added companyId to registration JWT token
-
-### 2. Multi-tenant Data Isolation
-- **Employee data leakage**: Fixed serious security issue showing all companies' employees
-- **Prisma errors when creating employees**: Added companyId to all employee operations
-- **Missing company boundaries**: Added companyId filtering to all employee endpoints
-- **Permission issues**: Improved role-based access control across the application
-
-### 3. Development Tools
-- **Mock data generation**: Added admin tool to generate realistic test data
-- **Prisma enum handling**: Fixed enum type issues in job and estimate creation
-- **Improved error messages**: Added descriptive error messages for easier debugging
+### 2. Key Touchpoints for AI Integration
+- **Estimate Creation Flow**: Add AI assistance during the estimate creation process
+- **Line Item Generation**: Automate line item creation based on job descriptions
+- **Client Communication**: Enhance estimate descriptions and client-facing language
+- **Historical Data Analysis**: Use past jobs to improve estimate accuracy
 
 ---
 
-## 🟡 In Progress Work
+## 🚀 Implementation Plan
 
-### 1. API Refinements
-- **GraphQL consideration**: Evaluating benefits of GraphQL implementation
-- **API documentation**: Creating comprehensive API documentation
-- **Rate limiting**: Planning to implement rate limiting for API endpoints
+### 1. Setup OpenAI Integration (High Priority)
+- **Create OpenAI client wrapper**: Implement a reusable service for API calls
+- **Environment configuration**: Set up API keys and model parameters
+- **Rate limiting and caching**: Implement to manage API usage and costs
+- **Error handling**: Create robust error management for API failures
 
-### 2. Security Enhancements
-- **CSRF protection**: Adding cross-site request forgery protections
-- **Security headers**: Implementing additional security headers
-- **Attack surface reduction**: Minimizing unnecessary API exposure
+### 2. Smart Estimate Generation (High Priority)
+- **Create AI estimate endpoint**: New API route at `/api/ai/generate-estimate`
+- **Job description analyzer**: Extract key services from natural language descriptions
+- **Line item generator**: Convert analyzed services into appropriate line items
+- **Price suggestion engine**: Recommend prices based on scope and historical data
 
----
+### 3. Material Recommendations (Medium Priority)
+- **Material database integration**: Connect AI to saved materials library
+- **Context-aware suggestions**: Recommend materials based on job type and description
+- **Quantity calculator**: Estimate required quantities based on job parameters
+- **Alternative options**: Suggest multiple material options at different price points
 
-## 🟢 Tech Stack & Architecture
+### 4. UI Components for AI Integration (Medium Priority)
+- **AI suggestion interface**: Add UI components to display and select AI suggestions
+- **Natural language input fields**: Enhanced text areas for job descriptions
+- **Confidence indicators**: Visual cues for AI suggestion reliability
+- **Feedback mechanism**: Allow users to rate AI suggestions for continuous improvement
 
-- **Frontend:** Next.js 14+ (App Router, React, TypeScript), Material-UI (MUI)
-- **Backend:** Next.js API routes (App Router), Prisma ORM
-- **Database:** PostgreSQL (schema in `prisma/schema.prisma`)
-- **Authentication:** NextAuth.js (credentials provider, session-based)
-- **Type Safety:** TypeScript throughout, custom types for session/user
-
----
-
-## 🛠️ Current Features (Working)
-
-- Public marketing homepage for unauthenticated users
-- User authentication with role-based model (Admin, Manager, Staff)
-- Job and estimate management (fully functional)
-- Schedule views with calendar integration
-- Route optimization using Google Maps API
-- Job notes system
-- Photo management for jobs
-- Multi-tenant data isolation
-- Mock data generation for testing
+### 5. Training and Fine-tuning (Low Priority)
+- **Company-specific data collection**: Gather historical estimate data for training
+- **Custom model fine-tuning**: Adapt OpenAI models to landscape industry terminology
+- **Feedback loop implementation**: Use user corrections to improve suggestions
+- **Performance monitoring**: Track AI suggestion accuracy and adoption rates
 
 ---
 
-## 🔧 Debugging Notes & Solutions
+## 🛠️ Technical Implementation Details
 
-### 1. Session & Authentication Fixes
+### OpenAI API Integration
 
-#### Problem:
-Authentication issues were causing API failures and incorrect redirects, particularly with missing companyId.
-
-#### Solution:
-1. Removed hardcoded staff credentials that bypassed normal authentication:
 ```typescript
-// Old problematic code in auth.ts
-if (credentials.email === 'staff@gmail.com' && credentials.password === 'staff') {
-  return {
-    id: "staff-user-id",
-    name: "Staff User",
-    email: "staff@gmail.com",
-    role: "STAFF",
-    // Missing companyId!
+// src/lib/openai.ts
+import { Configuration, OpenAIApi } from 'openai';
+
+const configuration = new Configuration({
+  apiKey: process.env.OPENAI_API_KEY,
+});
+
+export const openai = new OpenAIApi(configuration);
+
+export async function generateEstimate(jobDescription: string, jobType: string) {
+  try {
+    const response = await openai.createChatCompletion({
+      model: "gpt-4", // Or "gpt-3.5-turbo" for lower cost
+      messages: [
+        {
+          role: "system",
+          content: "You are an expert estimator for landscape services. Generate a detailed estimate with line items based on the job description."
+        },
+        {
+          role: "user",
+          content: `Job Type: ${jobType}\nDescription: ${jobDescription}\nGenerate a detailed estimate with appropriate line items, quantities, and suggested pricing.`
+        }
+      ],
+      temperature: 0.7,
+    });
+
+    return response.data.choices[0].message.content;
+  } catch (error) {
+    console.error('OpenAI API error:', error);
+    throw new Error('Failed to generate estimate with AI');
+  }
+}
+
+export async function analyzeMaterialRequirements(jobDescription: string, area: number) {
+  // Implementation for material analysis
+}
+
+export async function optimizePricing(lineItems: any[], clientInfo: any) {
+  // Implementation for pricing optimization
+}
+```
+
+### New API Endpoint for AI Estimates
+
+```typescript
+// src/app/api/ai/generate-estimate/route.ts
+import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
+import { generateEstimate } from '@/lib/openai';
+import { prisma } from '@/lib/prisma';
+
+export async function POST(req: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions);
+    
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { jobDescription, jobType, clientId } = await req.json();
+    
+    if (!jobDescription || !jobType || !clientId) {
+      return NextResponse.json(
+        { error: 'Missing required fields' },
+        { status: 400 }
+      );
+    }
+
+    // Get AI-generated estimate content
+    const estimateContent = await generateEstimate(jobDescription, jobType);
+    
+    // Parse the AI response into structured line items
+    const lineItems = parseAIEstimateResponse(estimateContent);
+    
+    // Return the structured estimate data
+    return NextResponse.json({
+      success: true,
+      title: `${jobType} Estimate`,
+      description: jobDescription,
+      lineItems,
+      suggestedPrice: calculateTotalPrice(lineItems),
+    });
+  } catch (error) {
+    console.error('Error generating AI estimate:', error);
+    return NextResponse.json(
+      { error: 'Failed to generate estimate' },
+      { status: 500 }
+    );
+  }
+}
+
+function parseAIEstimateResponse(aiResponse: string) {
+  // Implementation to parse the AI text response into structured line items
+}
+
+function calculateTotalPrice(lineItems: any[]) {
+  // Calculate total price from line items
+}
+```
+
+### UI Component for AI-Assisted Estimate Creation
+
+```typescript
+// src/app/estimates/components/AIEstimateGenerator.tsx
+import { useState } from 'react';
+import {
+  Box,
+  Button,
+  TextField,
+  Typography,
+  CircularProgress,
+  Chip,
+  Paper,
+} from '@mui/material';
+import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh';
+
+interface AIEstimateGeneratorProps {
+  onGenerateEstimate: (lineItems: any[]) => void;
+  jobType: string;
+  clientId: string;
+}
+
+export default function AIEstimateGenerator({ 
+  onGenerateEstimate, 
+  jobType,
+  clientId 
+}: AIEstimateGeneratorProps) {
+  const [description, setDescription] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleGenerate = async () => {
+    if (!description) return;
+    
+    setLoading(true);
+    setError('');
+    
+    try {
+      const response = await fetch('/api/ai/generate-estimate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          jobDescription: description,
+          jobType,
+          clientId,
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to generate estimate');
+      }
+      
+      const data = await response.json();
+      onGenerateEstimate(data.lineItems);
+    } catch (err) {
+      setError(err.message || 'An error occurred');
+    } finally {
+      setLoading(false);
+    }
   };
-}
 
-// New solution: Removed hardcoding and always access the database
-const user = await prisma.user.findUnique({
-  where: { email: credentials.email },
-});
-if (!user) return null;
-
-// Compare password
-const isValid = await bcrypt.compare(credentials.password, user.password);
-if (!isValid) return null;
-
-// Return complete user object with companyId
-return {
-  id: user.id,
-  name: user.name,
-  email: user.email,
-  role: user.role,
-  companyId: user.companyId,
-};
-```
-
-2. Fixed the staff creation endpoint to ensure proper companyId:
-```typescript
-// Create or find default company for staff users
-let defaultCompany = await prisma.company.findFirst({
-  where: { name: 'Demo Company' }
-});
-
-if (!defaultCompany) {
-  defaultCompany = await prisma.company.create({
-    data: { name: 'Demo Company' }
-  });
-}
-
-// Create staff user with companyId
-await prisma.user.create({
-  data: {
-    email: 'staff@gmail.com',
-    name: 'Staff User',
-    password: hashedPassword,
-    role: UserRole.STAFF,
-    companyId: defaultCompany.id, // Assign to company
-  },
-});
-```
-
-### 2. Multi-tenant Data Isolation
-
-#### Problem:
-Employee listings showed users from all companies, creating a major security issue.
-
-#### Solution:
-Updated all employee API endpoints to filter by companyId:
-
-```typescript
-// Filter employees by the current user's company ID
-const employees = await prisma.user.findMany({
-  where: {
-    companyId: session.user.companyId, // Only show employees from same company
-  },
-  // ... other query parameters
-});
-```
-
-Also added additional security checks:
-```typescript
-// Verify target employee exists and is in the same company
-const targetEmployee = await prisma.user.findFirst({
-  where: { 
-    id: params.id,
-    companyId: session.user.companyId // Ensure employee is from the same company
-  },
-});
-
-if (!targetEmployee) {
-  return NextResponse.json({ error: 'Employee not found or not in your company' }, { status: 404 });
+  return (
+    <Paper sx={{ p: 3, mb: 3 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+        <AutoFixHighIcon sx={{ mr: 1, color: 'primary.main' }} />
+        <Typography variant="h6">AI Estimate Generator</Typography>
+      </Box>
+      
+      <TextField
+        fullWidth
+        multiline
+        rows={4}
+        label="Describe the job in detail"
+        value={description}
+        onChange={(e) => setDescription(e.target.value)}
+        placeholder="Example: Client needs a complete landscape renovation for their 2500 sq ft backyard, including new sod installation, a stone patio area approximately 400 sq ft, and 5 new shrubs along the fence line."
+        sx={{ mb: 2 }}
+      />
+      
+      {error && (
+        <Typography color="error" sx={{ mb: 2 }}>
+          {error}
+        </Typography>
+      )}
+      
+      <Button
+        variant="contained"
+        color="primary"
+        startIcon={loading ? <CircularProgress size={20} color="inherit" /> : <AutoFixHighIcon />}
+        onClick={handleGenerate}
+        disabled={loading || !description}
+        fullWidth
+      >
+        {loading ? 'Generating Estimate...' : 'Generate AI Estimate'}
+      </Button>
+      
+      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+        The AI will analyze your description and suggest appropriate line items for your estimate.
+      </Typography>
+    </Paper>
+  );
 }
 ```
 
-### 3. Mock Data Generation
+---
 
-#### Problem:
-No easy way to test the system with realistic data.
+## 📝 Integration with Existing Estimate Flow
 
-#### Solution:
-Added a mock data generator with admin dashboard button:
+### 1. Add AI Component to AddEstimateDialog.tsx
+- Insert AIEstimateGenerator component in the Line Items step
+- Add AI-generated items to the form state
+- Provide feedback mechanism for accepted/rejected suggestions
 
-```typescript
-// Created API endpoint using appropriate Prisma enums
-import { JobType, EstimateStatus, JobStatus } from '@prisma/client';
+### 2. Enhance Existing Line Item UI
+- Add AI badges to AI-suggested items
+- Provide confidence scores for suggestions
+- Allow editing of AI-generated items
 
-// Job types from schema - using proper enum values
-const jobTypes = [
-  JobType.LAWN_MAINTENANCE,
-  JobType.LANDSCAPE_DESIGN,
-  JobType.TREE_SERVICE,
-  JobType.IRRIGATION,
-  JobType.HARDSCAPING,
-  JobType.CLEANUP,
-  JobType.PLANTING,
-  JobType.FERTILIZATION
-];
-
-// Added real addresses for mapping/routing functionality
-const realLocations = [
-  { city: 'New York', state: 'NY', zip: '10001' },
-  { city: 'Los Angeles', state: 'CA', zip: '90001' },
-  // ... more locations
-];
-```
+### 3. Implement Hybrid Workflow
+- Enable users to start with AI suggestions and modify as needed
+- Allow manual addition of items alongside AI suggestions
+- Support complete manual override when necessary
 
 ---
 
-## 🗺️ Next Steps & Priorities
+## 🔒 Security & Privacy Considerations
 
-### 1. High Priority
-- **Complete API review**: Ensure all endpoints enforce company boundaries
-- **Add unit tests**: Increase test coverage, particularly for authentication
-- **Performance profiling**: Identify and fix potential performance bottlenecks
+### 1. Data Handling
+- **Client Information**: Minimize sharing of client PII with OpenAI
+- **Sanitization**: Implement input/output sanitization for API calls
+- **Rate Limiting**: Prevent API abuse with proper rate limiting
 
-### 2. Medium Priority
-- **Enhanced analytics**: Add more business intelligence features
-- **User onboarding**: Improve first-time user experience
-- **Email notifications**: Implement email notifications for key events
+### 2. API Security
+- **Token Management**: Secure handling of OpenAI API keys
+- **Authentication**: Ensure all AI endpoints require proper authentication
+- **Request Validation**: Thorough validation of all incoming requests
 
-### 3. Low Priority
-- **Theme customization**: Allow company-specific branding
-- **Export/import functionality**: Add data export and import features
-- **Integration APIs**: Build third-party integration endpoints
-
----
-
-## 🤖 Troubleshooting Steps
-
-### For Authentication Issues
-1. **Check console logs** for "Unauthorized" or session-related errors
-2. **Inspect session data** in the browser (localStorage/cookies)
-3. **Verify JWT token contains companyId** using browser devtools
-4. **Check middleware.ts** for correct route protection logic
-5. **Verify user creation** in registration flow (correct role and companyId)
-
-### For API 401 Errors
-1. **Check request headers** for presence of authentication cookies
-2. **Inspect API endpoint code** for proper session validation
-3. **Verify Prisma queries** include proper company filtering
-4. **Log session data** at beginning of API route handlers
-5. **Check database** for correct user-company associations
+### 3. Compliance
+- **Terms of Service**: Ensure OpenAI usage complies with their terms
+- **User Consent**: Obtain proper consent for AI processing
+- **Data Retention**: Implement appropriate data retention policies
 
 ---
 
-## 🔍 Key API Routes to Check
+## 📈 Success Metrics
 
-- `/api/auth/register`: Ensure proper company and user creation
-- `/api/auth/[...nextauth]`: NextAuth configuration and callbacks
-- `/api/employees`: Check for proper company ID filtering
-- `/api/clients`: Verify company ID handling in client management
-- `/api/mock-data`: Test data generation utility
-
----
-
-## 📈 Progress Tracking
-
-| Issue | Status | Priority | Notes |
-|-------|--------|----------|-------|
-| Session missing companyId | Fixed | High | Updated NextAuth callbacks and removed hardcoded staff |
-| Data leakage across companies | Fixed | Critical | Added companyId filtering to employee endpoints |
-| Role-based redirection issues | Fixed | High | Corrected dashboard redirect logic |
-| Debug role switcher causing problems | Fixed | Medium | Component completely disabled |
-| Mock data generation | Completed | Medium | Added admin tool with configurable settings |
-| API authorization security | Fixed | High | Improved company boundary enforcement |
-| Client creation errors | Fixed | High | Added proper companyId to all creation requests |
+| Metric | Target | Measurement Method |
+|--------|--------|-------------------|
+| Estimate Creation Time | 50% reduction | Compare avg. time before/after AI implementation |
+| Estimate Accuracy | <5% manual adjustment | Track percentage of AI suggestions accepted without changes |
+| User Adoption | 80% of users | Monitor percentage of estimates using AI features |
+| Client Satisfaction | 20% increase | Survey clients on estimate clarity and detail |
+| Conversion Rate | 15% increase | Track percentage of estimates accepted by clients |
 
 ---
 
-# End of Current Status (2025-07-24)
+## 🛣️ Implementation Roadmap
+
+### Phase 1: Foundation (2 weeks)
+- Set up OpenAI API integration
+- Create core AI service functions
+- Implement basic prompt engineering
+- Develop estimate parsing logic
+
+### Phase 2: Core Features (3 weeks)
+- Build AI estimate generation endpoint
+- Create UI components for estimate creation
+- Implement line item suggestion engine
+- Add material recommendation system
+
+### Phase 3: Refinement (2 weeks)
+- Improve prompt engineering based on initial results
+- Implement pricing optimization
+- Add confidence scoring for suggestions
+- Create feedback collection mechanism
+
+### Phase 4: Advanced Features (3 weeks)
+- Develop custom model training pipeline
+- Implement historical data analysis
+- Add competitor pricing analysis
+- Create detailed reporting on AI performance
+
+---
+
+# End of AI Integration Plan (2025-08-10)
 

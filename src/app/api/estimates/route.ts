@@ -10,11 +10,16 @@ export async function GET(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
     
-    if (!session) {
+    if (!session || !session.user || !session.user.companyId) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
     const estimates = await prisma.estimate.findMany({
+      where: {
+        company: {
+          id: session.user.companyId
+        }
+      },
       include: {
         client: {
           select: {
@@ -46,7 +51,7 @@ export async function POST(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
     
-    if (!session) {
+    if (!session || !session.user || !session.user.id || !session.user.companyId) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
@@ -60,22 +65,29 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Calculate total price from line items
+    const totalPrice = data.lineItems.reduce(
+      (sum: number, item: any) => sum + (item.total || item.quantity * item.unitPrice),
+      0
+    );
+
     // Create the estimate with lineItems
     const estimate = await prisma.estimate.create({
       data: {
         title: data.title,
         description: data.description || '',
         status: 'DRAFT',
-        price: data.price || 0,
+        price: totalPrice,
         validUntil: new Date(data.validUntil),
         clientId: data.clientId,
         createdById: session.user.id,
+        companyId: session.user.companyId,
         lineItems: {
-          create: data.lineItems.map(item => ({
+          create: data.lineItems.map((item: any) => ({
             description: item.description,
             quantity: item.quantity,
             unitPrice: item.unitPrice,
-            total: item.quantity * item.unitPrice,
+            total: item.total || (item.quantity * item.unitPrice),
           })),
         },
       },
@@ -89,7 +101,7 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     console.error('Error creating estimate:', error);
     return NextResponse.json(
-      { message: 'Error creating estimate' },
+      { message: 'Error creating estimate', error: String(error) },
       { status: 500 }
     );
   }
