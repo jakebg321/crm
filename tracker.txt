@@ -1,11 +1,11 @@
 # GreenLead – AI Integration Plan
 
-_Last updated: 2025-08-10_
+_Last updated: 2025-08-15_
 
 ---
 
 ## 📋 Current Status Summary
-GreenLead is a CRM system for landscape businesses that needs to integrate OpenAI for enhancing the estimate creation process. The application is built with Next.js, Prisma ORM, and PostgreSQL, using role-based access (Admin, Manager, Staff) with NextAuth authentication.
+GreenLead is a CRM system for landscape businesses that integrates OpenAI for enhancing the estimate creation process. The application is built with Next.js, Prisma ORM, and PostgreSQL, using role-based access (Admin, Manager, Staff) with NextAuth authentication.
 
 ---
 
@@ -16,42 +16,53 @@ GreenLead is a CRM system for landscape businesses that needs to integrate OpenA
 - **Price Optimization**: Analyze historical data to suggest optimal pricing
 - **Material Recommendations**: Automatically suggest appropriate materials for specific job types
 - **Natural Language Processing**: Allow users to describe jobs in plain language
+- **Interactive Estimating**: Enable real-time editing and customization of AI-generated estimates
+- **Client Management**: Seamlessly create and manage clients during the estimate process
 
 ### 2. Key Touchpoints for AI Integration
 - **Estimate Creation Flow**: Add AI assistance during the estimate creation process
 - **Line Item Generation**: Automate line item creation based on job descriptions
 - **Client Communication**: Enhance estimate descriptions and client-facing language
 - **Historical Data Analysis**: Use past jobs to improve estimate accuracy
+- **Conversational Interface**: Chat-based interaction for estimate generation
+- **Interactive Editing**: Real-time modification of AI suggestions
 
 ---
 
 ## 🚀 Implementation Plan
 
-### 1. Setup OpenAI Integration (High Priority)
+### 1. Setup OpenAI Integration (Completed)
 - **Create OpenAI client wrapper**: Implement a reusable service for API calls
 - **Environment configuration**: Set up API keys and model parameters
 - **Rate limiting and caching**: Implement to manage API usage and costs
 - **Error handling**: Create robust error management for API failures
 
-### 2. Smart Estimate Generation (High Priority)
+### 2. Smart Estimate Generation (Completed)
 - **Create AI estimate endpoint**: New API route at `/api/ai/generate-estimate`
 - **Job description analyzer**: Extract key services from natural language descriptions
 - **Line item generator**: Convert analyzed services into appropriate line items
 - **Price suggestion engine**: Recommend prices based on scope and historical data
 
-### 3. Material Recommendations (Medium Priority)
+### 3. Material Recommendations (Completed)
 - **Material database integration**: Connect AI to saved materials library
 - **Context-aware suggestions**: Recommend materials based on job type and description
 - **Quantity calculator**: Estimate required quantities based on job parameters
 - **Alternative options**: Suggest multiple material options at different price points
 
-### 4. UI Components for AI Integration (Medium Priority)
+### 4. UI Components for AI Integration (Completed)
 - **AI suggestion interface**: Add UI components to display and select AI suggestions
 - **Natural language input fields**: Enhanced text areas for job descriptions
 - **Confidence indicators**: Visual cues for AI suggestion reliability
 - **Feedback mechanism**: Allow users to rate AI suggestions for continuous improvement
 
-### 5. Training and Fine-tuning (Low Priority)
+### 5. Advanced Interaction Features (Completed)
+- **Interactive Line Item Editing**: Add, edit, delete line items in real-time
+- **Multi-Job Type Support**: Select multiple job types for comprehensive estimates
+- **Custom Job Type Option**: Specify non-standard job types
+- **On-the-fly Client Creation**: Add new clients during the estimate process
+- **Integrated Chat Interface**: Conversational estimate generation
+
+### 6. Training and Fine-tuning (Low Priority)
 - **Company-specific data collection**: Gather historical estimate data for training
 - **Custom model fine-tuning**: Adapt OpenAI models to landscape industry terminology
 - **Feedback loop implementation**: Use user corrections to improve suggestions
@@ -65,22 +76,44 @@ GreenLead is a CRM system for landscape businesses that needs to integrate OpenA
 
 ```typescript
 // src/lib/openai.ts
-import { Configuration, OpenAIApi } from 'openai';
+import { OpenAI } from 'openai';
 
-const configuration = new Configuration({
+// Create an OpenAI client instance
+const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-export const openai = new OpenAIApi(configuration);
-
+/**
+ * Generate a landscape estimate based on job description and type
+ */
 export async function generateEstimate(jobDescription: string, jobType: string) {
   try {
-    const response = await openai.createChatCompletion({
+    const response = await openai.chat.completions.create({
       model: "gpt-4", // Or "gpt-3.5-turbo" for lower cost
       messages: [
         {
           role: "system",
-          content: "You are an expert estimator for landscape services. Generate a detailed estimate with line items based on the job description."
+          content: `You are an expert estimator for landscape services. Generate a detailed estimate with line items based on the job description.
+            
+            IMPORTANT: Your response must ONLY contain a JSON array of line items with NO additional text. 
+            Format as follows:
+            [
+              {
+                "description": "Item description",
+                "quantity": number,
+                "unitPrice": number,
+                "notes": "Optional notes about the item"
+              }
+            ]
+            
+            When generating estimates:
+            1. Include all materials and labor needed for the job
+            2. Use any specific materials mentioned in the description with their prices
+            3. Be thorough and include all steps of the process (preparation, installation, cleanup)
+            4. Use realistic quantities and prices for landscape services
+            5. Break down large jobs into appropriate components
+            
+            DO NOT include any explanatory text before or after the JSON - ONLY return the JSON array.`
         },
         {
           role: "user",
@@ -90,17 +123,64 @@ export async function generateEstimate(jobDescription: string, jobType: string) 
       temperature: 0.7,
     });
 
-    return response.data.choices[0].message.content;
+    return response.choices[0].message.content || '[]';
   } catch (error) {
     console.error('OpenAI API error:', error);
     throw new Error('Failed to generate estimate with AI');
   }
 }
 
+/**
+ * Analyze material requirements based on job description and area
+ */
 export async function analyzeMaterialRequirements(jobDescription: string, area: number) {
-  // Implementation for material analysis
+  try {
+    const response = await openai.chat.completions.create({
+      model: process.env.OPENAI_MODEL || "gpt-4",
+      messages: [
+        {
+          role: "system",
+          content: 
+`You are a professional landscape contractor with expert knowledge of materials required for different landscape projects.
+Your task is to analyze the job description and area provided by the user, then provide a detailed list of materials needed.
+
+For each material, include:
+1. Name of the material
+2. Quantity needed (with appropriate units)
+3. Unit (e.g., yards, bags, pieces, etc.)
+4. Any special notes about the material
+
+Consider factors like the type of job, area size, and any specific requirements mentioned.
+If multiple job types are mentioned, include materials for all relevant types.
+Be specific with material names and use industry-standard measurements.
+
+Your response should ONLY contain valid JSON in the following format:
+{
+  "materials": [
+    { "name": "Material Name", "quantity": 10, "unit": "yards", "notes": "Optional notes about usage" },
+    { "name": "Another Material", "quantity": 5, "unit": "bags", "notes": "Optional notes" }
+  ]
+}`
+        },
+        {
+          role: "user",
+          content: `Job Description: ${jobDescription}\nArea: ${area} square feet\n\nProvide a detailed material list with quantities.`,
+        },
+      ],
+      temperature: 0.7,
+      max_tokens: 2000
+    });
+
+    return response.choices[0].message.content || '{"materials":[]}';
+  } catch (error) {
+    console.error('OpenAI API error:', error);
+    throw new Error(`Failed to analyze material requirements: ${error.message}`);
+  }
 }
 
+/**
+ * Optimize pricing based on line items and client information
+ */
 export async function optimizePricing(lineItems: any[], clientInfo: any) {
   // Implementation for pricing optimization
 }
@@ -126,7 +206,7 @@ export async function POST(req: NextRequest) {
 
     const { jobDescription, jobType, clientId } = await req.json();
     
-    if (!jobDescription || !jobType || !clientId) {
+    if (!jobDescription || !jobType) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
@@ -155,140 +235,126 @@ export async function POST(req: NextRequest) {
     );
   }
 }
-
-function parseAIEstimateResponse(aiResponse: string) {
-  // Implementation to parse the AI text response into structured line items
-}
-
-function calculateTotalPrice(lineItems: any[]) {
-  // Calculate total price from line items
-}
 ```
 
-### UI Component for AI-Assisted Estimate Creation
+### Material Requirements API Endpoint
 
 ```typescript
-// src/app/estimates/components/AIEstimateGenerator.tsx
-import { useState } from 'react';
-import {
-  Box,
-  Button,
-  TextField,
-  Typography,
-  CircularProgress,
-  Chip,
-  Paper,
-} from '@mui/material';
-import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh';
+// src/app/api/ai/material-requirements/route.ts
+import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
+import { analyzeMaterialRequirements } from '@/lib/openai';
+import { prisma } from '@/lib/prisma';
+import { JobType } from '@prisma/client';
 
-interface AIEstimateGeneratorProps {
-  onGenerateEstimate: (lineItems: any[]) => void;
-  jobType: string;
-  clientId: string;
-}
-
-export default function AIEstimateGenerator({ 
-  onGenerateEstimate, 
-  jobType,
-  clientId 
-}: AIEstimateGeneratorProps) {
-  const [description, setDescription] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-
-  const handleGenerate = async () => {
-    if (!description) return;
+export async function POST(req: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions);
     
-    setLoading(true);
-    setError('');
-    
-    try {
-      const response = await fetch('/api/ai/generate-estimate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          jobDescription: description,
-          jobType,
-          clientId,
-        }),
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to generate estimate');
-      }
-      
-      const data = await response.json();
-      onGenerateEstimate(data.lineItems);
-    } catch (err) {
-      setError(err.message || 'An error occurred');
-    } finally {
-      setLoading(false);
+    if (!session || !session.user || !session.user.id || !session.user.companyId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-  };
 
-  return (
-    <Paper sx={{ p: 3, mb: 3 }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-        <AutoFixHighIcon sx={{ mr: 1, color: 'primary.main' }} />
-        <Typography variant="h6">AI Estimate Generator</Typography>
-      </Box>
-      
-      <TextField
-        fullWidth
-        multiline
-        rows={4}
-        label="Describe the job in detail"
-        value={description}
-        onChange={(e) => setDescription(e.target.value)}
-        placeholder="Example: Client needs a complete landscape renovation for their 2500 sq ft backyard, including new sod installation, a stone patio area approximately 400 sq ft, and 5 new shrubs along the fence line."
-        sx={{ mb: 2 }}
-      />
-      
-      {error && (
-        <Typography color="error" sx={{ mb: 2 }}>
-          {error}
-        </Typography>
-      )}
-      
-      <Button
-        variant="contained"
-        color="primary"
-        startIcon={loading ? <CircularProgress size={20} color="inherit" /> : <AutoFixHighIcon />}
-        onClick={handleGenerate}
-        disabled={loading || !description}
-        fullWidth
-      >
-        {loading ? 'Generating Estimate...' : 'Generate AI Estimate'}
-      </Button>
-      
-      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
-        The AI will analyze your description and suggest appropriate line items for your estimate.
-      </Typography>
-    </Paper>
-  );
+    const { jobDescription, jobType, area } = await req.json();
+    
+    if (!jobDescription) {
+      return NextResponse.json(
+        { error: 'Job description is required' },
+        { status: 400 }
+      );
+    }
+
+    if (!area || area <= 0) {
+      return NextResponse.json(
+        { error: 'Valid area is required' },
+        { status: 400 }
+      );
+    }
+
+    // We're now more flexible with jobType - it can be a string with multiple types
+    // or even include custom types, so we don't validate it strictly against the enum
+
+    // Fetch user's saved materials for context
+    let savedMaterials = [];
+    try {
+      savedMaterials = await prisma.savedItem.findMany({
+        where: { userId: session.user.id },
+      });
+    } catch (err) {
+      console.error('Error fetching saved materials:', err);
+      // Continue without saved materials if there's an error
+    }
+
+    // Create enhanced job description with saved materials context
+    let enhancedDescription = jobDescription;
+    if (savedMaterials && savedMaterials.length > 0) {
+      enhancedDescription += "\n\nConsider using the following materials if appropriate:";
+      savedMaterials.forEach((material: any) => {
+        enhancedDescription += `\n- ${material.description} ($${material.unitPrice}/unit)`;
+      });
+    }
+
+    // Enhance description with job type context
+    if (jobType) {
+      enhancedDescription += `\n\nThis is for a ${jobType} project.`;
+    }
+    
+    // Add area information
+    enhancedDescription += `\n\nThe total area is approximately ${area} square feet.`;
+
+    // Get AI-generated material requirements
+    const materialRequirementsJson = await analyzeMaterialRequirements(
+      enhancedDescription, 
+      area
+    );
+    
+    // Return the structured materials data
+    return NextResponse.json({
+      success: true,
+      jobType,
+      description: jobDescription,
+      area,
+      materials: materialRequirements.materials || [],
+    });
+  } catch (error) {
+    console.error('Error analyzing material requirements:', error);
+    return NextResponse.json(
+      { error: 'Failed to analyze material requirements' },
+      { status: 500 }
+    );
+  }
 }
 ```
 
 ---
 
-## 📝 Integration with Existing Estimate Flow
+## 🔑 Key Features Implemented
 
-### 1. Add AI Component to AddEstimateDialog.tsx
-- Insert AIEstimateGenerator component in the Line Items step
-- Add AI-generated items to the form state
-- Provide feedback mechanism for accepted/rejected suggestions
+### 1. Editable AI-Generated Estimates
+- **Interactive Line Items**: Fully editable line items directly in the UI
+- **Real-time Calculations**: Automatic total recalculation as items are modified
+- **Add/Remove Items**: Ability to add new items or remove existing ones
+- **Custom Formatting**: Format estimates for display or export
+- **Copy to Clipboard**: Easy sharing of estimates via copy function
 
-### 2. Enhance Existing Line Item UI
-- Add AI badges to AI-suggested items
-- Provide confidence scores for suggestions
-- Allow editing of AI-generated items
+### 2. Multiple Job Type Support
+- **Multi-select Interface**: Select multiple types of landscaping work
+- **Custom Job Types**: Define non-standard job types for specialized work
+- **Enhanced Prompt Engineering**: Improved AI prompts incorporating multiple job types
+- **Context-Aware Recommendations**: Materials and prices based on combined job types
 
-### 3. Implement Hybrid Workflow
-- Enable users to start with AI suggestions and modify as needed
-- Allow manual addition of items alongside AI suggestions
-- Support complete manual override when necessary
+### 3. Client Management Integration
+- **On-the-fly Client Creation**: Add new clients during estimate generation
+- **Form Validation**: Validate client data before saving
+- **Seamless Experience**: No need to leave the estimate workflow
+- **Client Selection**: Choose from existing clients or create new ones
+
+### 4. Conversational UI
+- **Chat Interface**: Natural language interaction for estimate generation
+- **Contextual Responses**: AI understands conversation history for better recommendations
+- **Visual Feedback**: Clear indication of processing and completion states
+- **Estimate Preview**: See estimates formatted directly in the chat
 
 ---
 
@@ -323,33 +389,27 @@ export default function AIEstimateGenerator({
 
 ---
 
-## 🛣️ Implementation Roadmap
+## 🔮 Future Enhancements
 
-### Phase 1: Foundation (2 weeks)
-- Set up OpenAI API integration
-- Create core AI service functions
-- Implement basic prompt engineering
-- Develop estimate parsing logic
+### 1. Advanced AI Capabilities
+- **Seasonal Pricing**: Adjust recommendations based on seasonal demand
+- **Geographic Awareness**: Regional price and material recommendations
+- **Historical Learning**: Improve estimates based on past jobs
+- **Competitor Analysis**: Benchmark pricing against local competitors
 
-### Phase 2: Core Features (3 weeks)
-- Build AI estimate generation endpoint
-- Create UI components for estimate creation
-- Implement line item suggestion engine
-- Add material recommendation system
+### 2. UI/UX Improvements
+- **Mobile Optimization**: Enhanced mobile experience for field estimates
+- **Voice Input**: Voice-to-text for easier input in the field
+- **Photo Analysis**: Extract job details from site photos
+- **AR Visualization**: Augmented reality visualization of proposed work
 
-### Phase 3: Refinement (2 weeks)
-- Improve prompt engineering based on initial results
-- Implement pricing optimization
-- Add confidence scoring for suggestions
-- Create feedback collection mechanism
-
-### Phase 4: Advanced Features (3 weeks)
-- Develop custom model training pipeline
-- Implement historical data analysis
-- Add competitor pricing analysis
-- Create detailed reporting on AI performance
+### 3. Integration Enhancements
+- **Calendar Integration**: Automatic scheduling suggestions based on estimate
+- **Invoice Generation**: Convert accepted estimates to invoices
+- **Material Ordering**: Create purchase orders for required materials
+- **Staff Assignment**: Smart staff allocation based on job requirements
 
 ---
 
-# End of AI Integration Plan (2025-08-10)
+# End of AI Integration Plan (2025-08-15)
 
